@@ -1,8 +1,6 @@
 #!/bin/sh
 #
 # Simple patching for RedHat only.
-# Patch, check for basic errors and reboot.
-#
 
 # Variables to be updated based on run.
 PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin
@@ -26,14 +24,18 @@ case $PT_security_only in
 esac
 
 # What is this event we are working on?
-EVENT="PATCHING_${DATE}"
+EVENT="os_patching_${DATE}"
 
 # Constants - not to be modified
-LOCKFILE=/tmp/.patch_run_${DATE}.lockfile
 LOGFILE=/var/log/os_patching.${DATE}
 FAILMSG=
 FACTDIR=/opt/puppetlabs/facter/facts.d/
-FACTFILE=${FACTDIR}/PATCHSTATE.yaml
+FACTFILE=${FACTDIR}/os_patching_state.yaml
+PUPPET=/usr/local/bin/puppet
+if [ ! -x ${PUPPET} ]; then
+  echo "ERROR: This Cannot find puppet command"
+  exit 1
+fi
 FACTER=/usr/local/bin/facter
 if [ ! -x ${FACTER} ]; then
   echo "ERROR: This Cannot find facter command"
@@ -47,13 +49,10 @@ fi
 HOSTMAJOR=`echo ${HOSTRELEASE} | awk -F. '{print $1}'`
 
 # Patch states 0-2 are used in the pre and post scripts
-PATCHSTATE0="0-patchscriptstart"
-PATCHSTATE1="1-precheckscomplete"
 PATCHSTATE3="3-yumdryrun"
 PATCHSTATE4="4-yumrun"
 PATCHSTATE5="5-yumdryrun"
 PATCHSTATE6="6-rebootpending"
-PATCHSTATE7="7-rebootaborted"
 PATCHSTATE8="8-rebootstarted"
 PATCHSTATE9="9-rebootcompleted"
 PATCHSTATE10="10-noactionrequired"
@@ -77,16 +76,7 @@ send_message()
   if [ ${TYPE} -ne 0 ]; then
     # Force a puppet run to get facts into DB
     # For successful patching, puppet runs after reboot
-    if [ -x /opt/puppetlabs/puppet/bin/puppet ]; then
-      PUPPET=/opt/puppetlabs/puppet/bin/puppet
-    elif [ -x /usr/local/bin/puppet ]; then
-      PUPPET=/usr/local/bin/puppet
-    else
-      PUPPET=
-    fi
-    if [ ! -z "${PUPPET}" ]; then
-      ( cd /tmp ; nohup ${PUPPET} agent -t >/dev/null ) &
-    fi
+    ${PUPPET} agent -t >/dev/null
     JSON=`cat << EOF
 {
   "_error": {
@@ -127,9 +117,6 @@ echo \"PATCHEVENTTIME : \\\"\${DATE}\\\"\" >> ${FACTFILE}
 }
 
 
-#
-# Write out fact data to show where we are in the sequence
-# See constants above for messages
 write_patch_fact()
 {
   THEFACT=$1
@@ -142,7 +129,7 @@ write_patch_fact()
       send_message 1 "ERROR: Fact directory create failed - aborting"
     fi
   fi
-  echo "PATCHSTATE : \"${THEFACT}\"" > ${FACTFILE}
+  echo "os_patching_state : \"${THEFACT}\"" > ${FACTFILE}
   if [ $? -ne 0 ]; then
     send_message 1 "ERROR: Fact file write failed - aborting"
   fi
@@ -192,14 +179,13 @@ case $? in
 }
 EOF
 `
-
     echo $JSON
     clean_up ${PATCHSTATE10} now
     exit 0
     ;;
   100)
     send_message 0 "NOTICE: Yum dry run shows patches to be applied"
-    FAILMSG="No patches to apply"
+    FAILMSG="There are patches to apply"
     write_patch_fact "${PATCHSTATE3}-success"
     ;;
   *)
@@ -215,15 +201,6 @@ send_message 0 "NOTICE: Patch package installation starting"
 # Actually do the patching!
 yum $SECONLY upgrade -y >> ${LOGFILE} 2>&1
 YUMEXIT=$?
-
-# Yum said yes, but we simply do not trust it in low space situations ...
-# Do we have a fact warning?
-${FACTER} -p patchdata.spaceblocker.boot_less_100mb | grep no >/dev/null
-if [ $? -eq 0 ]; then
-  FAILMSG="Not enough space in /boot"
-  write_patch_fact "${PATCHSTATE4}-fail-bootspace"
-  send_message 3 "ERROR: Yum run failed - not enough space in /boot to install new kernel"
-fi
 
 egrep "to work around the problem" ${LOGFILE} >/dev/null
 if [ $? -eq 0 ]; then
@@ -273,11 +250,6 @@ esac
 
 yum clean all 2>/dev/null 1>/dev/null
 write_patch_fact "${PATCHSTATE6}-success"
-
-# Verification checks - external - check that we got the packages we expected.
-# This is highly customised for each patch run and must cover the list
-# of supported OS versions from the pre-check script.
-# We expect the verification script to return 0 on success and 1 on failed to verify.
 
 FQDN=`${FACTER} fqdn`
 JSONDATE=`date`
