@@ -2,7 +2,7 @@
 
 ## Release 0.1.14
 
-- 
+- Pull facts into line
 
 ## Release 0.1.13
 

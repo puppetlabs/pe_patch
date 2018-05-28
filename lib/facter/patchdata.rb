@@ -1,4 +1,4 @@
-Facter.add(:patchdata, :type => :aggregate) do
+Facter.add(:os_patching_data, :type => :aggregate) do
 
   yumupdatefile = "/var/patching-data/cache.yum.cu"
   yumsecupdatefile = "/var/patching-data/cache.yum.scu"
