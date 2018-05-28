@@ -105,9 +105,9 @@ clean_up()
   # Puppet runs at S98 ..
 echo "#!/bin/sh
 DATE=\`date +\"%Y%m%d%H%M.%SS\"\`
-echo \"PATCHEVENT : \\\"${EVENT}\\\"\" > ${FACTFILE}
-echo \"PATCHSTATE : \\\"${1}\\\"\" >> ${FACTFILE}
-echo \"PATCHEVENTTIME : \\\"\${DATE}\\\"\" >> ${FACTFILE}
+echo \"os_patching_event : \\\"${EVENT}\\\"\" > ${FACTFILE}
+echo \"os_patching_state : \\\"${1}\\\"\" >> ${FACTFILE}
+echo \"os_patching_event_time : \\\"\${DATE}\\\"\" >> ${FACTFILE}
 /bin/rm -f /etc/rc3.d/S90postpatchfacts /etc/cron.d/${EVENT}
 " > /etc/rc3.d/S90postpatchfacts
   chmod 755 /etc/rc3.d/S90postpatchfacts
@@ -134,16 +134,16 @@ write_patch_fact()
     send_message 1 "ERROR: Fact file write failed - aborting"
   fi
   if [ ! -z "${FAILMSG}" ]; then
-    echo "PATCHMESSAGE : \"${FAILMSG}\"" > ${FACTFILE}
+    echo "os_patching_msg : \"${FAILMSG}\"" > ${FACTFILE}
     if [ $? -ne 0 ]; then
       send_message 1 "ERROR: Fact file write failed - aborting"
     fi
   fi
-  echo "PATCHEVENTTIME : \"`date +'%Y%m%d%H%M.%SS'`\"" >> ${FACTFILE}
+  echo "os_patching_event_time : \"`date +'%Y%m%d%H%M.%SS'`\"" >> ${FACTFILE}
   if [ $? -ne 0 ]; then
     send_message 1 "ERROR: Fact file write failed - aborting"
   fi
-  echo "PATCHEVENT : \"${EVENT}\"" >> ${FACTFILE}
+  echo "os_patching_event : \"${EVENT}\"" >> ${FACTFILE}
   if [ $? -ne 0 ]; then
     send_message 1 "ERROR: Fact file write failed - aborting"
   fi
