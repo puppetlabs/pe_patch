@@ -6,9 +6,6 @@ fixtures:
     provision: 'https://github.com/puppetlabs/provision.git'
     translate: 'git://github.com/puppetlabs/puppetlabs-translate.git'
   forge_modules:
-    stdlib:
-      repo: puppetlabs-stdlib
-      ref: 5.2.0
     cron_core:
       repo: puppetlabs-cron_core
       ref: 1.0.1

@@ -9,10 +9,6 @@
   "issues_url": "https://github.com/puppetlabs/os_patching/issues",
   "dependencies": [
     {
-      "name": "puppetlabs-stdlib",
-      "version_requirement": ">= 4.13.1 < 6.0.0"
-    },
-    {
       "name": "puppetlabs-translate",
       "version_requirement": ">= 1.0.0 < 2.0.0"
     },
