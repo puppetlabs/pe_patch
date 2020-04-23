@@ -58,7 +58,7 @@
 # @param patch_window [String]
 #   A freeform text entry used to allocate a node to a specific patch window (Optional)
 #
-# @param pre_patching_command [Stdlib::AbsolutePath]
+# @param pre_patching_command [Os_patching::Absolutepath]
 #   The full path of the command to run prior to running patching.  Can be used to
 #   run customised workflows such as gracefully shutting down applications.  The entry
 #   must be a single absolute filename with no arguments or parameters.
@@ -137,7 +137,7 @@ class os_patching (
   Enum['installed', 'absent', 'purged', 'held', 'latest'] $delta_rpm = 'installed',
   Enum['installed', 'absent', 'purged', 'held', 'latest'] $yum_plugin_security = 'installed',
   Optional[Variant[Boolean, Enum['always', 'never', 'patched', 'smart', 'default']]] $reboot_override = 'default',
-  Optional[Stdlib::Absolutepath] $pre_patching_command = undef,
+  Optional[Os_patching::Absolutepath] $pre_patching_command = undef,
   Optional[Hash] $blackout_windows   = undef,
   $patch_window                      = undef,
   $patch_cron_hour                   = absent,
@@ -287,7 +287,7 @@ class os_patching (
   file { "${cache_dir}/blackout_windows":
     ensure  => $blackout_windows_ensure,
     content => epp("${module_name}/blackout_windows.epp", {
-      'blackout_windows' => pick($blackout_windows, {}),
+      'blackout_windows' => os_patching_pick($blackout_windows, {}),
     }),
     require => File[$cache_dir],
   }
