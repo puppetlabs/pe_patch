@@ -15,19 +15,19 @@ if IS_WINDOWS
   # windows
   # use ruby file logger
   require 'logger'
-  log = Logger.new('C:/ProgramData/os_patching/os_patching_task.log', 'monthly')
+  log = Logger.new('C:/ProgramData/pe_patch/pe_patch_task.log', 'monthly')
   # set paths/commands for windows
-  fact_generation_script = 'C:/ProgramData/os_patching/os_patching_fact_generation.ps1'
+  fact_generation_script = 'C:/ProgramData/pe_patch/pe_patch_fact_generation.ps1'
   fact_generation_cmd = "#{ENV['systemroot']}/system32/WindowsPowerShell/v1.0/powershell.exe -ExecutionPolicy RemoteSigned -file #{fact_generation_script}"
   puppet_cmd = "#{ENV['programfiles']}/Puppet Labs/Puppet/bin/puppet"
-  shutdown_cmd = 'shutdown /r /t 60 /c "Rebooting due to the installation of updates by os_patching" /d p:2:17'
+  shutdown_cmd = 'shutdown /r /t 60 /c "Rebooting due to the installation of updates by pe_patch" /d p:2:17'
 else
   # not windows
   # create syslog logger
   require 'syslog/logger'
-  log = Syslog::Logger.new 'os_patching'
+  log = Syslog::Logger.new 'pe_patch'
   # set paths/commands for linux
-  fact_generation_script = '/usr/local/bin/os_patching_fact_generation.sh'
+  fact_generation_script = '/usr/local/bin/pe_patch_fact_generation.sh'
   fact_generation_cmd = fact_generation_script
   puppet_cmd = '/opt/puppetlabs/puppet/bin/puppet'
   shutdown_cmd = 'nohup /sbin/shutdown -r +1 2>/dev/null 1>/dev/null &'
@@ -41,9 +41,9 @@ BUFFER_SIZE = 4096
 # Function to write out the history file after patching
 def history(dts, message, code, reboot, security, job)
   historyfile = if IS_WINDOWS
-                  'C:/ProgramData/os_patching/run_history'
+                  'C:/ProgramData/pe_patch/run_history'
                 else
-                  '/var/cache/os_patching/run_history'
+                  '/var/cache/pe_patch/run_history'
                 end
   open(historyfile, 'a') do |f|
     f.puts "#{dts}|#{message}|#{code}|#{reboot}|#{security}|#{job}"
@@ -80,7 +80,7 @@ def run_with_timeout(command, timeout, tick)
       # We need to kill the process, because killing the thread leaves
       # the process alive but detached, annoyingly enough.
       Process.kill('TERM', pid)
-      err('403', 'os_patching/patching', "TIMEOUT AFTER #{timeout} seconds\n#{output}", start)
+      err('403', 'pe_patch/patching', "TIMEOUT AFTER #{timeout} seconds\n#{output}", start)
     end
   ensure
     stdin.close if stdin
@@ -181,12 +181,12 @@ def err(code, kind, message, starttime)
     # windows
     # use ruby file logger
     require 'logger'
-    log = Logger.new('C:/ProgramData/os_patching/os_patching_task.log', 'monthly')
+    log = Logger.new('C:/ProgramData/pe_patch/pe_patch_task.log', 'monthly')
   else
     # not windows
     # create syslog logger
     require 'syslog/logger'
-    log = Syslog::Logger.new 'os_patching'
+    log = Syslog::Logger.new 'pe_patch'
   end
   log.error "ERROR : #{kind} : #{exitcode} : #{message}"
   exit(exitcode.to_i)
@@ -242,18 +242,18 @@ begin
   params = JSON.parse(raw)
 # rescue JSON::ParserError => e
 rescue JSON::ParserError
-  err(400, 'os_patching/input', "Invalid JSON received: '#{raw}'", starttime)
+  err(400, 'pe_patch/input', "Invalid JSON received: '#{raw}'", starttime)
 end
 
-log.info 'os_patching run started'
+log.info 'pe_patch run started'
 
-# ensure node has been tagged with os_patching class by checking for fact generation script
-log.debug 'Running os_patching fact refresh'
+# ensure node has been tagged with pe_patch class by checking for fact generation script
+log.debug 'Running pe_patch fact refresh'
 unless File.exist? fact_generation_script
   err(
     255,
-    "os_patching/#{fact_generation_script}",
-    "#{fact_generation_script} does not exist, declare os_patching and run Puppet first",
+    "pe_patch/#{fact_generation_script}",
+    "#{fact_generation_script} does not exist, declare pe_patch and run Puppet first",
     starttime,
   )
 end
@@ -261,16 +261,16 @@ end
 # Cache the facts
 log.debug 'Gathering facts'
 full_facts, stderr, status = Open3.capture3(puppet_cmd, 'facts')
-err(status, 'os_patching/facter', stderr, starttime) if status != 0
+err(status, 'pe_patch/facter', stderr, starttime) if status != 0
 facts = JSON.parse(full_facts)
 
 # Check we are on a supported platform
 unless facts['values']['os']['family'] == 'RedHat' || facts['values']['os']['family'] == 'Debian' || facts['values']['os']['family'] == 'Suse' || facts['values']['os']['family'] == 'windows'
-  err(200, 'os_patching/unsupported_os', 'Unsupported OS', starttime)
+  err(200, 'pe_patch/unsupported_os', 'Unsupported OS', starttime)
 end
 
 # Get the pinned packages
-pinned_pkgs = facts['values']['os_patching']['pinned_packages']
+pinned_pkgs = facts['values']['pe_patch']['pinned_packages']
 
 # Should we clean the cache prior to starting?
 if params['clean_cache'] && params['clean_cache'] == true
@@ -282,22 +282,22 @@ if params['clean_cache'] && params['clean_cache'] == true
                   'zypper cc --all'
                 end
   _fact_out, stderr, status = Open3.capture3(clean_cache)
-  err(status, 'os_patching/clean_cache', stderr, starttime) if status != 0
+  err(status, 'pe_patch/clean_cache', stderr, starttime) if status != 0
   log.info 'Cache cleaned'
 end
 
 # Refresh the patching fact cache on non-windows systems
-# Windows scans can take a long time, and we do one at the start of the os_patching_windows script anyway.
+# Windows scans can take a long time, and we do one at the start of the pe_patch_windows script anyway.
 # No need to do yet another scan prior to this, it just wastes valuable time.
 if facts['values']['os']['family'] != 'windows'
   _fact_out, stderr, status = Open3.capture3(fact_generation_cmd)
-  err(status, 'os_patching/fact_refresh', stderr, starttime) if status != 0
+  err(status, 'pe_patch/fact_refresh', stderr, starttime) if status != 0
 end
 
 # Let's figure out the reboot gordian knot
 #
 # If the override is set, it doesn't matter that anything else is set to at this point
-reboot_override = facts['values']['os_patching']['reboot_override']
+reboot_override = facts['values']['pe_patch']['reboot_override']
 reboot_param = params['reboot']
 reboot = ''
 if reboot_override == 'always'
@@ -319,13 +319,13 @@ elsif reboot_override == 'default'
     elsif reboot_param == 'smart'
       reboot = 'smart'
     else
-      err('108', 'os_patching/params', 'Invalid parameter for reboot', starttime)
+      err('108', 'pe_patch/params', 'Invalid parameter for reboot', starttime)
     end
   else
     reboot = 'never'
   end
 else
-  err(105, 'os_patching/reboot_override', 'Fact reboot_override invalid', starttime)
+  err(105, 'pe_patch/reboot_override', 'Fact reboot_override invalid', starttime)
 end
 
 if reboot_override != reboot_param && reboot_override != 'default'
@@ -342,7 +342,7 @@ if params['security_only']
   elsif params['security_only'] == false
     security_only = false
   else
-    err('109', 'os_patching/params', 'Invalid boolean to security_only parameter', starttime)
+    err('109', 'pe_patch/params', 'Invalid boolean to security_only parameter', starttime)
   end
 else
   security_only = false
@@ -358,7 +358,7 @@ yum_params = if params['yum_params']
 
 # Make sure we're not doing something unsafe
 if yum_params =~ %r{[\$\|\/;`&]}
-  err('110', 'os_patching/yum_params', 'Unsafe content in yum_params', starttime)
+  err('110', 'pe_patch/yum_params', 'Unsafe content in yum_params', starttime)
 end
 
 # Have we had any dpkg parameter specified?
@@ -370,7 +370,7 @@ dpkg_params = if params['dpkg_params']
 
 # Make sure we're not doing something unsafe
 if dpkg_params =~ %r{[\$\|\/;`&]}
-  err('110', 'os_patching/dpkg_params', 'Unsafe content in dpkg_params', starttime)
+  err('110', 'pe_patch/dpkg_params', 'Unsafe content in dpkg_params', starttime)
 end
 
 # Have we had any zypper parameters specified?
@@ -382,43 +382,43 @@ zypper_params = if params['zypper_params']
 
 # Make sure we're not doing something unsafe
 if zypper_params =~ %r{[\$\|\/;`&]}
-  err('110', 'os_patching/zypper_params', 'Unsafe content in zypper_params', starttime)
+  err('110', 'pe_patch/zypper_params', 'Unsafe content in zypper_params', starttime)
 end
 # Set the timeout for the patch run
 if params['timeout']
   if params['timeout'] > 0
     timeout = params['timeout']
   else
-    err('121', 'os_patching/timeout', "timeout set to #{timeout} seconds - invalid", starttime)
+    err('121', 'pe_patch/timeout', "timeout set to #{timeout} seconds - invalid", starttime)
   end
 else
   timeout = 3600
 end
 
 # Is the patching blocker flag set?
-blocker = facts['values']['os_patching']['blocked']
+blocker = facts['values']['pe_patch']['blocked']
 if blocker.to_s.chomp == 'true'
   # Patching is blocked, list the reasons and error
   # need to error as it SHOULDN'T ever happen if you
   # use the right workflow through tasks.
   log.error 'Patching blocked, not continuing'
-  block_reason = facts['values']['os_patching']['blocker_reasons']
-  err(100, 'os_patching/blocked', "Patching blocked #{block_reason}", starttime)
+  block_reason = facts['values']['pe_patch']['blocker_reasons']
+  err(100, 'pe_patch/blocked', "Patching blocked #{block_reason}", starttime)
 end
 
 # Should we look at security or all patches to determine if we need to patch?
 # (requires RedHat subscription or Debian based distro... for now)
 if security_only == true
-  updatecount = facts['values']['os_patching']['security_package_update_count']
+  updatecount = facts['values']['pe_patch']['security_package_update_count']
   securityflag = '--security'
 else
-  updatecount = facts['values']['os_patching']['package_update_count']
+  updatecount = facts['values']['pe_patch']['package_update_count']
   securityflag = ''
 end
 
 # Get pre_patching_command
-pre_patching_command = if facts['values']['os_patching']['pre_patching_command']
-                         facts['values']['os_patching']['pre_patching_command']
+pre_patching_command = if facts['values']['pe_patch']['pre_patching_command']
+                         facts['values']['pe_patch']['pre_patching_command']
                        else
                          ''
                        end
@@ -427,13 +427,13 @@ if File.exist?(pre_patching_command)
   if File.executable?(pre_patching_command)
     log.info 'Running pre_patching_command : #{pre_patching_command}'
     _fact_out, stderr, status = Open3.capture3(pre_patching_command)
-    err(status, 'os_patching/pre_patching_command', "Pre-patching-command failed: #{stderr}", starttime) if status != 0
+    err(status, 'pe_patch/pre_patching_command', "Pre-patching-command failed: #{stderr}", starttime) if status != 0
     log.info 'Finished pre_patching_command : #{pre_patching_command}'
   else
-    err(210, 'os_patching/pre_patching_command', "Pre patching command not executable #{pre_patching_command}", starttime)
+    err(210, 'pe_patch/pre_patching_command', "Pre patching command not executable #{pre_patching_command}", starttime)
   end
 elsif pre_patching_command != ''
-  err(200, 'os_patching/pre_patching_command', "Pre patching command not found #{pre_patching_command}", starttime)
+  err(200, 'pe_patch/pre_patching_command', "Pre patching command not found #{pre_patching_command}", starttime)
 end
 
 # There are no updates available, exit cleanly rebooting if the override flag is set
@@ -462,14 +462,14 @@ if facts['values']['os']['family'] == 'RedHat'
   log.debug "Timeout value set to : #{timeout}"
   yum_end = ''
   status, output = run_with_timeout("yum #{yum_params} #{securityflag} upgrade -y", timeout, 2)
-  err(status, 'os_patching/yum', "yum upgrade returned non-zero (#{status}) : #{output}", starttime) if status != 0
+  err(status, 'pe_patch/yum', "yum upgrade returned non-zero (#{status}) : #{output}", starttime) if status != 0
 
   if facts['values']['os']['release']['major'].to_i > 5
     # Capture the yum job ID
     log.info 'Getting yum job ID'
     job = ''
     yum_id, stderr, status = Open3.capture3('yum history')
-    err(status, 'os_patching/yum', stderr, starttime) if status != 0
+    err(status, 'pe_patch/yum', stderr, starttime) if status != 0
     yum_id.split("\n").each do |line|
       # Quite the regex.  This pulls out fields 1 & 3 from the first info line
       # from `yum history`,  which look like this :
@@ -484,22 +484,22 @@ if facts['values']['os']['family'] == 'RedHat'
     end
 
     # Fail if we didn't capture a job ID
-    err(1, 'os_patching/yum', 'yum job ID not found', starttime) if job.empty?
+    err(1, 'pe_patch/yum', 'yum job ID not found', starttime) if job.empty?
 
     # Fail if we didn't capture a job time
-    err(1, 'os_patching/yum', 'yum job time not found', starttime) if yum_end.empty?
+    err(1, 'pe_patch/yum', 'yum job time not found', starttime) if yum_end.empty?
 
     # Check that the first yum history entry was after the yum_start time
     # we captured.  Append ':59' to the date as yum history only gives the
     # minute and if yum bails, it will usually be pretty quick
     parsed_end = Time.parse(yum_end + ':59').iso8601
-    err(1, 'os_patching/yum', 'Yum did not appear to run', starttime) if parsed_end < starttime
+    err(1, 'pe_patch/yum', 'Yum did not appear to run', starttime) if parsed_end < starttime
 
     # Capture the yum return code
     log.debug "Getting yum return code for job #{job}"
     yum_status, stderr, status = Open3.capture3("yum history info #{job}")
     yum_return = ''
-    err(status, 'os_patching/yum', stderr, starttime) if status != 0
+    err(status, 'pe_patch/yum', stderr, starttime) if status != 0
     yum_status.split("\n").each do |line|
       matchdata = line.match(/^Return-Code\s+:\s+(.*)$/)
       next unless matchdata
@@ -507,13 +507,13 @@ if facts['values']['os']['family'] == 'RedHat'
       break
     end
 
-    err(status, 'os_patching/yum', 'yum return code not found', starttime) if yum_return.empty?
+    err(status, 'pe_patch/yum', 'yum return code not found', starttime) if yum_return.empty?
 
     pkg_hash = {}
     # Pull out the updated package list from yum history
     log.debug "Getting updated package list for job #{job}"
     updated_packages, stderr, status = Open3.capture3("yum history info #{job}")
-    err(status, 'os_patching/yum', stderr, starttime) if status != 0
+    err(status, 'pe_patch/yum', stderr, starttime) if status != 0
     updated_packages.split("\n").each do |line|
       matchdata = line.match(/^\s+(Installed|Install|Upgraded|Erased|Updated)\s+(\S+)\s/)
       next unless matchdata
@@ -532,10 +532,10 @@ elsif facts['values']['os']['family'] == 'Debian'
   apt_mode = ''
   pkg_list = []
   if security_only == true
-    pkg_list = facts['values']['os_patching']['security_package_updates']
+    pkg_list = facts['values']['pe_patch']['security_package_updates']
     apt_mode = 'install ' + pkg_list.join(' ')
   else
-    pkg_list = facts['values']['os_patching']['package_updates']
+    pkg_list = facts['values']['pe_patch']['package_updates']
     apt_mode = 'dist-upgrade'
   end
 
@@ -544,7 +544,7 @@ elsif facts['values']['os']['family'] == 'Debian'
   deb_front = 'DEBIAN_FRONTEND=noninteractive'
   deb_opts = '-o Apt::Get::Purge=false -o Dpkg::Options::=--force-confold -o Dpkg::Options::=--force-confdef --no-install-recommends'
   apt_std_out, stderr, status = Open3.capture3("#{deb_front} apt-get #{dpkg_params} -y #{deb_opts} #{apt_mode}")
-  err(status, 'os_patching/apt', stderr, starttime) if status != 0
+  err(status, 'pe_patch/apt', stderr, starttime) if status != 0
 
   output('Success', reboot, security_only, 'Patching complete', pkg_list, apt_std_out, '', pinned_pkgs, starttime)
   log.info 'Patching complete'
@@ -560,7 +560,7 @@ elsif facts['values']['os']['family'] == 'windows'
 
   # build patching command
   powershell_cmd = "#{ENV['systemroot']}/system32/WindowsPowerShell/v1.0/powershell.exe -NonInteractive -ExecutionPolicy RemoteSigned -File"
-  win_patching_cmd = "#{powershell_cmd} #{params['_installdir']}/os_patching/files/os_patching_windows.ps1 #{security_arg} -Timeout #{timeout}"
+  win_patching_cmd = "#{powershell_cmd} #{params['_installdir']}/pe_patch/files/pe_patch_windows.ps1 #{security_arg} -Timeout #{timeout}"
 
   log.info 'Running patching powershell script'
 
@@ -568,7 +568,7 @@ elsif facts['values']['os']['family'] == 'windows'
   win_std_out, stderr, status = Open3.capture3(win_patching_cmd)
 
   # report an error if non-zero exit status
-  err(status, 'os_patching/win', stderr, starttime) if status != 0 || stderr != ''
+  err(status, 'pe_patch/win', stderr, starttime) if status != 0 || stderr != ''
 
   # get output file location
   output_file = ''
@@ -615,15 +615,15 @@ elsif facts['values']['os']['family'] == 'Suse'
   end
   pkg_list = []
   if security_only == true
-    pkg_list = facts['values']['os_patching']['security_package_updates']
+    pkg_list = facts['values']['pe_patch']['security_package_updates']
     log.info 'Running zypper patch'
     status, output = run_with_timeout("zypper #{zypper_required_params} #{zypper_params} patch -g security #{zypper_cmd_params}", timeout, 2)
-    err(status, 'os_patching/zypper', "zypper patch returned non-zero (#{status}) : #{output}", starttime) if status != 0
+    err(status, 'pe_patch/zypper', "zypper patch returned non-zero (#{status}) : #{output}", starttime) if status != 0
   else
-    pkg_list = facts['values']['os_patching']['package_updates']
+    pkg_list = facts['values']['pe_patch']['package_updates']
     log.info 'Running zypper update'
     status, output = run_with_timeout("zypper #{zypper_required_params} #{zypper_params} update -t package #{zypper_cmd_params}", timeout, 2)
-    err(status, 'os_patching/zypper', "zypper update returned non-zero (#{status}) : #{output}", starttime) if status != 0
+    err(status, 'pe_patch/zypper', "zypper update returned non-zero (#{status}) : #{output}", starttime) if status != 0
   end
   output('Success', reboot, security_only, 'Patching complete', pkg_list, output, '', pinned_pkgs, starttime)
   log.info 'Patching complete'
@@ -631,17 +631,17 @@ elsif facts['values']['os']['family'] == 'Suse'
 else
   # Only works on Redhat, Debian, Suse, and Windows at the moment
   log.error 'Unsupported OS - exiting'
-  err(200, 'os_patching/unsupported_os', 'Unsupported OS', starttime)
+  err(200, 'pe_patch/unsupported_os', 'Unsupported OS', starttime)
 end
 
 # Refresh the facts now that we've patched - for non-windows systems
 # Windows scans can take an eternity after a patch run prior to being reboot (30+ minutes in a lab on 2008 versions..)
 # Best not to delay the whole patching process here.
-# Note that the fact refresh (which includes a scan) runs on system startup anyway - see os_patching puppet class
+# Note that the fact refresh (which includes a scan) runs on system startup anyway - see pe_patch puppet class
 if facts['values']['os']['family'] != 'windows'
-  log.info 'Running os_patching fact refresh'
+  log.info 'Running pe_patch fact refresh'
   _fact_out, stderr, status = Open3.capture3(fact_generation_cmd)
-  err(status, 'os_patching/fact', stderr, starttime) if status != 0
+  err(status, 'pe_patch/fact', stderr, starttime) if status != 0
 end
 
 # Reboot if the task has been told to and there is a requirement OR if reboot_override is set to true
@@ -656,5 +656,5 @@ if needs_reboot == true
        end
   Process.detach(p1)
 end
-log.info 'os_patching run complete'
+log.info 'pe_patch run complete'
 exit 0

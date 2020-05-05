@@ -2,7 +2,7 @@
 #   [puppet health check](https://forge.puppet.com/albatrossflavour/puppet_health_check)
 #   module to perform a pre-check on the nodes you're planning to patch.  If the nodes pass the
 #   check, they get patched
-plan os_patching::patch_after_healthcheck (TargetSpec $nodes) {
+plan pe_patch::patch_after_healthcheck (TargetSpec $nodes) {
   # Run an initial health check to make sure the target nodes are ready
 
   $health_checks = run_task('puppet_health_check::agent_health',
@@ -21,5 +21,5 @@ plan os_patching::patch_after_healthcheck (TargetSpec $nodes) {
   $targets = $nodes_to_patch.map | $value | { $value['certname'] }
 
   notice ("Skipping the following nodes due to health check failures : ${nodes_skipped}")
-  return run_task('os_patching::patch_server', $targets)
+  return run_task('pe_patch::patch_server', $targets)
 }

@@ -1,17 +1,17 @@
 require 'spec_helper'
 
-describe 'os_patching' do
+describe 'pe_patch' do
   on_supported_os.each do |os, os_facts|
     context "on #{os}" do
       let(:facts) { os_facts }
 
       case os_facts[:kernel]
       when 'Linux'
-        let(:cache_dir) { '/var/cache/os_patching' }
-        let(:fact_cmd) { '/usr/local/bin/os_patching_fact_generation.sh' }
+        let(:cache_dir) { '/var/cache/pe_patch' }
+        let(:fact_cmd) { '/usr/local/bin/pe_patch_fact_generation.sh' }
       when 'windows'
-        let(:cache_dir) { 'C:/ProgramData/os_patching' }
-        let(:fact_cmd) { 'C:/ProgramData/os_patching/os_patching_fact_generation.ps1' }
+        let(:cache_dir) { 'C:/ProgramData/pe_patch' }
+        let(:fact_cmd) { 'C:/ProgramData/pe_patch/pe_patch_fact_generation.ps1' }
       end
 
       case os_facts[:osfamily]
@@ -129,7 +129,7 @@ describe 'os_patching' do
 
       it { is_expected.to compile }
       it { is_expected.to compile.with_all_deps }
-      it { is_expected.to contain_class('os_patching') }
+      it { is_expected.to contain_class('pe_patch') }
       it { is_expected.to contain_file(cache_dir).with({
         'ensure' => 'directory',
       })}
@@ -156,12 +156,12 @@ describe 'os_patching' do
       when 'Linux'
         it { is_expected.to contain_cron('Cache patching data').with_ensure('present') }
         it { is_expected.to contain_cron('Cache patching data at reboot').with_ensure('present') }
-        it { is_expected.to contain_exec('os_patching::exec::fact').that_requires(
+        it { is_expected.to contain_exec('pe_patch::exec::fact').that_requires(
           'File[' + cache_dir + '/reboot_override]',
         )}
       end
-      it { is_expected.to contain_exec('os_patching::exec::fact') }
-      it { is_expected.to contain_exec('os_patching::exec::fact_upload') }
+      it { is_expected.to contain_exec('pe_patch::exec::fact') }
+      it { is_expected.to contain_exec('pe_patch::exec::fact_upload') }
 
       context 'block on warnings' do
         let(:params) { { 'block_patching_on_warnings' => true } }

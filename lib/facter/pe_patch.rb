@@ -2,13 +2,13 @@
 # on old (pre v.2) versions of facter as it uses
 # aggregate facts
 if Facter.value(:facterversion).split('.')[0].to_i < 2
-  Facter.add('os_patching') do
+  Facter.add('pe_patch') do
     setcode do
       'not valid on legacy facter versions'
     end
   end
 else
-  Facter.add('os_patching', :type => :aggregate) do
+  Facter.add('pe_patch', :type => :aggregate) do
     confine { Facter.value(:kernel) == 'windows' || Facter.value(:kernel) == 'Linux' }
     require 'time'
     now = Time.now.iso8601
@@ -17,15 +17,15 @@ else
     blocked_reasons = []
 
     if Facter.value(:kernel) == 'Linux'
-      os_patching_dir = '/var/cache/os_patching'
+      pe_patch_dir = '/var/cache/pe_patch'
     elsif Facter.value(:kernel) == 'windows'
-      os_patching_dir = 'C:\ProgramData\os_patching'
+      pe_patch_dir = 'C:\ProgramData\pe_patch'
     end
 
     chunk(:updates) do
       data = {}
       updatelist = []
-      updatefile = os_patching_dir + '/package_updates'
+      updatefile = pe_patch_dir + '/package_updates'
       if File.file?(updatefile)
         if (Time.now - File.mtime(updatefile)) / (24 * 3600) > 10
           warnings['update_file_time'] = 'Update file has not been updated in 10 days'
@@ -49,7 +49,7 @@ else
     chunk(:kb_updates) do
       data = {}
       kblist = []
-      kbfile = os_patching_dir + '/missing_update_kbs'
+      kbfile = pe_patch_dir + '/missing_update_kbs'
       if File.file?(kbfile) && !File.zero?(kbfile)
         kbs = File.open(kbfile, 'r').read
         kbs.each_line do |line|
@@ -63,7 +63,7 @@ else
     chunk(:secupdates) do
       data = {}
       secupdatelist = []
-      secupdatefile = os_patching_dir + '/security_package_updates'
+      secupdatefile = pe_patch_dir + '/security_package_updates'
       if File.file?(secupdatefile)
         if (Time.now - File.mtime(secupdatefile)) / (24 * 3600) > 10
           warnings['sec_update_file_time'] = 'Security update file has not been updated in 10 days'
@@ -85,7 +85,7 @@ else
     chunk(:blackouts) do
       data = {}
       arraydata = {}
-      blackoutfile = os_patching_dir + '/blackout_windows'
+      blackoutfile = pe_patch_dir + '/blackout_windows'
       if File.file?(blackoutfile)
         blackouts = File.open(blackoutfile, 'r').read
         blackouts.each_line do |line|
@@ -122,8 +122,8 @@ else
     chunk(:pinned) do
       data = {}
       pinnedpkgs = []
-      mismatchpinnedpackagefile = os_patching_dir + '/mismatched_version_locked_packages'
-      pinnedpackagefile = os_patching_dir + '/os_version_locked_packages'
+      mismatchpinnedpackagefile = pe_patch_dir + '/mismatched_version_locked_packages'
+      pinnedpackagefile = pe_patch_dir + '/os_version_locked_packages'
       if File.file?(pinnedpackagefile)
         pinnedfile = File.open(pinnedpackagefile, 'r').read.chomp
         pinnedfile.each_line do |line|
@@ -144,7 +144,7 @@ else
     # History info
     chunk(:history) do
       data = {}
-      patchhistoryfile = os_patching_dir + '/run_history'
+      patchhistoryfile = pe_patch_dir + '/run_history'
       data['last_run'] = {}
       if File.file?(patchhistoryfile)
         historyfile = File.open(patchhistoryfile, 'r').to_a
@@ -165,7 +165,7 @@ else
     # Patch window
     chunk(:patch_window) do
       data = {}
-      patchwindowfile = os_patching_dir + '/patch_window'
+      patchwindowfile = pe_patch_dir + '/patch_window'
       if File.file?(patchwindowfile)
         patchwindow = File.open(patchwindowfile, 'r').to_a
         line = patchwindow.last
@@ -181,7 +181,7 @@ else
 
     # Reboot override
     chunk(:reboot_override) do
-      rebootfile = os_patching_dir + '/reboot_override'
+      rebootfile = pe_patch_dir + '/reboot_override'
       data = {}
       if File.file?(rebootfile)
         rebootoverride = File.open(rebootfile, 'r').to_a
@@ -211,7 +211,7 @@ else
     chunk(:reboot_required) do
       data = {}
       data['reboots'] = {}
-      reboot_required_file = os_patching_dir + '/reboot_required'
+      reboot_required_file = pe_patch_dir + '/reboot_required'
       if File.file?(reboot_required_file)
         if (Time.now - File.mtime(reboot_required_file)) / (24 * 3600) > 10
           warnings['reboot_required_file_time'] = 'Reboot required file has not been updated in 10 days'
@@ -228,7 +228,7 @@ else
       else
         data['reboots']['reboot_required'] = 'unknown'
       end
-      app_restart_file = os_patching_dir + '/apps_to_restart'
+      app_restart_file = pe_patch_dir + '/apps_to_restart'
       if File.file?(app_restart_file)
         app_restart_fh = File.open(app_restart_file, 'r').to_a
         data['reboots']['apps_needing_restart'] = {}
@@ -249,7 +249,7 @@ else
     # Should we patch if there are warnings?
     chunk(:pre_patching_command) do
       data = {}
-      pre_patching_command = os_patching_dir + '/pre_patching_command'
+      pre_patching_command = pe_patch_dir + '/pre_patching_command'
       if File.file?(pre_patching_command) && !File.empty?(pre_patching_command)
         command = File.open(pre_patching_command, 'r').to_a
         line = command.last
@@ -276,7 +276,7 @@ else
     # Should we patch if there are warnings?
     chunk(:block_patching_on_warnings) do
       data = {}
-      abort_on_warningsfile = os_patching_dir + '/block_patching_on_warnings'
+      abort_on_warningsfile = pe_patch_dir + '/block_patching_on_warnings'
       if File.file?(abort_on_warningsfile)
         data['block_patching_on_warnings'] = 'true'
         unless warnings.empty?
