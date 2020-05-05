@@ -1,5 +1,5 @@
 # @summary This manifest sets up a script and cron job to populate
-#   the `os_patching` fact.
+#   the `pe_patch` fact.
 #
 # @param patch_data_owner [String]
 #   User name for the owner of the patch data
@@ -15,7 +15,7 @@
 #   If `true`, use the parameter `yum_utils` to determine how it should be manged
 #
 # @param block_patching_on_warnings [Boolean]
-#   If there are warnings present in the os_patching fact, should the patching task run?
+#   If there are warnings present in the pe_patch fact, should the patching task run?
 #   If `true` the run will abort and take no action
 #   If `false` the run will continue and attempt to patch (default)
 #
@@ -58,7 +58,7 @@
 # @param patch_window [String]
 #   A freeform text entry used to allocate a node to a specific patch window (Optional)
 #
-# @param pre_patching_command [Os_patching::Absolutepath]
+# @param pre_patching_command [Pe_patch::Absolutepath]
 #   The full path of the command to run prior to running patching.  Can be used to
 #   run customised workflows such as gracefully shutting down applications.  The entry
 #   must be a single absolute filename with no arguments or parameters.
@@ -82,7 +82,7 @@
 #   `present` to install scripts, cronjobs, files, etc, `absent` to cleanup a system that previously hosted us
 #
 # @example assign node to 'Week3' patching window, force a reboot and create a blackout window for the end of the year
-#   class { 'os_patching':
+#   class { 'pe_patch':
 #     patch_window     => 'Week3',
 #     reboot_override  => 'always',
 #     blackout_windows => { 'End of year change freeze':
@@ -105,8 +105,8 @@
 #     # Merge the blackout windows from the parameter and hiera
 #     $full_blackout_windows = $hiera_blackout_windows + $blackout_windows
 #
-#     # Call the os_patching class to set everything up
-#     class { 'os_patching':
+#     # Call the pe_patch class to set everything up
+#     class { 'pe_patch':
 #       patch_window     => $patch_window,
 #       reboot_override  => $reboot_override,
 #       blackout_windows => $full_blackout_windows,
@@ -117,13 +117,13 @@
 #   {"End of year change freeze": {"start": "2018-12-15T00:00:00+10:00", "end": "2019-01-15T23:59:59+10:00"}}
 #
 # @example Run patching on the node `centos.example.com` using the smart reboot option
-#   puppet task run os_patching::patch_server --params '{"reboot": "smart"}' --nodes centos.example.com
+#   puppet task run pe_patch::patch_server --params '{"reboot": "smart"}' --nodes centos.example.com
 #
 # @example Remove from a managed system
-#   class { 'os_patching':
+#   class { 'pe_patch':
 #     ensure => absent,
 #   }
-class os_patching (
+class pe_patch (
   String $patch_data_owner            = 'root',
   String $patch_data_group            = 'root',
   String $patch_cron_user             = $patch_data_owner,
@@ -137,7 +137,7 @@ class os_patching (
   Enum['installed', 'absent', 'purged', 'held', 'latest'] $delta_rpm = 'installed',
   Enum['installed', 'absent', 'purged', 'held', 'latest'] $yum_plugin_security = 'installed',
   Optional[Variant[Boolean, Enum['always', 'never', 'patched', 'smart', 'default']]] $reboot_override = 'default',
-  Optional[Os_patching::Absolutepath] $pre_patching_command = undef,
+  Optional[Pe_patch::Absolutepath] $pre_patching_command = undef,
   Optional[Hash] $blackout_windows   = undef,
   $patch_window                      = undef,
   $patch_cron_hour                   = absent,
@@ -149,16 +149,16 @@ class os_patching (
 ) {
 
   $fact_exec = $ensure ? {
-    'present' => 'os_patching::exec::fact',
+    'present' => 'pe_patch::exec::fact',
     default   => undef,
   }
 
   case $::kernel {
     'Linux': {
       $fact_upload_cmd     = '/opt/puppetlabs/bin/puppet facts upload'
-      $cache_dir           = '/var/cache/os_patching'
+      $cache_dir           = '/var/cache/pe_patch'
       $fact_dir            = '/usr/local/bin'
-      $fact_file           = 'os_patching_fact_generation.sh'
+      $fact_file           = 'pe_patch_fact_generation.sh'
       $fact_mode           = '0700'
       File {
         owner => $patch_data_owner,
@@ -168,9 +168,9 @@ class os_patching (
     }
     'windows': {
       $fact_upload_cmd     = '"C:/Program Files/Puppet Labs/Puppet/bin/puppet.bat" facts upload'
-      $cache_dir           = 'C:/ProgramData/os_patching'
+      $cache_dir           = 'C:/ProgramData/pe_patch'
       $fact_dir            = $cache_dir
-      $fact_file           = 'os_patching_fact_generation.ps1'
+      $fact_file           = 'pe_patch_fact_generation.ps1'
       $fact_mode           = '0770'
     }
     default: { fail translate(("Unsupported OS : ${facts['kernel']}")) }
@@ -180,7 +180,7 @@ class os_patching (
   $fact_cmd = "${fact_dir}/${fact_file}"
 
   $fact_upload_exec = $ensure ? {
-    'present' => 'os_patching::exec::fact_upload',
+    'present' => 'pe_patch::exec::fact_upload',
     default   => undef
   }
 
@@ -287,7 +287,7 @@ class os_patching (
   file { "${cache_dir}/blackout_windows":
     ensure  => $blackout_windows_ensure,
     content => epp("${module_name}/blackout_windows.epp", {
-      'blackout_windows' => os_patching_pick($blackout_windows, {}),
+      'blackout_windows' => pe_patch_pick($blackout_windows, {}),
     }),
     require => File[$cache_dir],
   }
@@ -380,7 +380,7 @@ class os_patching (
         }
       }
 
-      scheduled_task { 'os_patching fact generation':
+      scheduled_task { 'pe_patch fact generation':
         ensure    => $ensure,
         enabled   => true,
         command   => "${::system32}/WindowsPowerShell/v1.0/powershell.exe",

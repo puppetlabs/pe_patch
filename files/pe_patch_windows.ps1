@@ -1,7 +1,7 @@
 #Requires -Version 3.0
 
 #
-# Installs windows updates, for the puppet module os_patching.
+# Installs windows updates, for the puppet module pe_patch.
 # Developed by Nathan Giuliani (nathojg@gmail.com) and Tony Green
 #
 # As the Windows Update Download and Install API commands are not available on a remote session (e.g. executing through WinRM using something like Bolt)
@@ -16,10 +16,10 @@
 
 <#
 .SYNOPSIS
-Installs windows updates, for the puppet module os_patching.
+Installs windows updates, for the puppet module pe_patch.
 
 .DESCRIPTION
-Installs windows updates, for the puppet module os_patching. This script is intended to be run as part of the os_patching module, however it will also function standalone.
+Installs windows updates, for the puppet module pe_patch. This script is intended to be run as part of the pe_patch module, however it will also function standalone.
 
 The download and install APIs are not available over a remote PowerShell session (e.g. through Puppet Bolt). To overcome this, the script may launch the patching as a scheduled task running as local system.
 
@@ -52,7 +52,7 @@ Install only the first X numbmer of updates (at most). Useful ror testing.
 # There may be nicer ways of doing this - e.g. detecting the invoke type and using native
 # write- cmdlets, or detecting the windows version and using the information stream where it
 # exists, however this is probably not necessary. The intended use case for this code is from
-# the os_patching::patch_servers task, which won't return real-time line-by-line updates anyway
+# the pe_patch::patch_servers task, which won't return real-time line-by-line updates anyway
 # so having all the output returned after everything is done in this script is really only an
 # issue when developing.
 
@@ -102,10 +102,10 @@ param(
     [Int32]$MaxUpdates,
 
     # path to lock file
-    [String]$LockFile = "$($env:programdata)\os_patching\os_patching_windows.lock",
+    [String]$LockFile = "$($env:programdata)\pe_patch\pe_patch_windows.lock",
 
     # path to logs directory
-    [String]$LogDir = "$($env:programdata)\os_patching",
+    [String]$LogDir = "$($env:programdata)\pe_patch",
 
     # how long to retain log files
     [Int32]$LogFileRetainDays = 30
@@ -172,7 +172,7 @@ function Save-LockFile {
                 # Check the path of the process matching PID in the lock file
                 if ($process.path -match "powershell.exe") {
                     # most likely is another copy of this script
-                    Throw "Lock file found, it appears PID $($process.id) is another copy of os_patching_fact_generation or os_patching_windows. Exiting."
+                    Throw "Lock file found, it appears PID $($process.id) is another copy of pe_patch_fact_generation or pe_patch_windows. Exiting."
                 }
             }
             else {
@@ -225,7 +225,7 @@ function Invoke-AsCommand {
 function Invoke-AsScheduledTask {
     [CmdletBinding()]
     param (
-        [string]$TaskName = "os_patching job",
+        [string]$TaskName = "pe_patch job",
         [int32]$WaitMS = 500
     )
 
@@ -760,7 +760,7 @@ $scriptBlock = {
         $updateInstallResults
     }
 
-    Add-LogEntry -Output Verbose "os_patching_windows scriptblock: starting"
+    Add-LogEntry -Output Verbose "pe_patch_windows scriptblock: starting"
 
     #create update session
     $wuSession = Get-WUSession
@@ -769,7 +769,7 @@ $scriptBlock = {
     $updateRunResults = Invoke-UpdateRun -UpdateSession $wuSession
 
     # calculate filename for results file
-    $outputFilePath = Join-Path -Path $env:temp -ChildPath ("os_patching-results_{0:yyyy_MM_dd-HH_mm_ss}.json" -f (Get-Date))
+    $outputFilePath = Join-Path -Path $env:temp -ChildPath ("pe_patch-results_{0:yyyy_MM_dd-HH_mm_ss}.json" -f (Get-Date))
 
     if ($null -ne $updateRunResults) {
         # output as JSON with ASCII encoding which plays nice with puppet etc
@@ -784,7 +784,7 @@ $scriptBlock = {
         Add-LogEntry "##Output File is not applicable"
     }
 
-    Add-LogEntry -Output Verbose "os_patching_windows scriptblock: finished"
+    Add-LogEntry -Output Verbose "pe_patch_windows scriptblock: finished"
 
     # return log
     $script:log
@@ -807,9 +807,9 @@ trap {
 }
 
 # get log file name
-$LogFile = Join-Path -Path $LogDir -ChildPath ("os_patching-{0:yyyy_MM_dd-HH_mm_ss}.log" -f (Get-Date))
+$LogFile = Join-Path -Path $LogDir -ChildPath ("pe_patch-{0:yyyy_MM_dd-HH_mm_ss}.log" -f (Get-Date))
 
-Add-LogEntry "os_patching_windows: started"
+Add-LogEntry "pe_patch_windows: started"
 
 if ($null -ne $Timeout -and $Timeout -ge 1) {
     $endTime = [datetime]::now.AddSeconds($Timeout)
@@ -851,7 +851,7 @@ try {
     }
 
     # clean log files
-    Invoke-CleanLogFile -LogFileFilter "os_patching*.log"
+    Invoke-CleanLogFile -LogFileFilter "pe_patch*.log"
 }
 finally {
     # this code is always executed, even when an exception is trapped during main script execution
@@ -859,5 +859,5 @@ finally {
     # remove lock file
     Remove-LockFile
 
-    Add-LogEntry "os_patching_windows: finished"
+    Add-LogEntry "pe_patch_windows: finished"
 }

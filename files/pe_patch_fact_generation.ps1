@@ -1,12 +1,12 @@
 #Requires -Version 3.0
 
 #
-# Performs an update scan, and refreshes update related facts, for the puppet module os_patching.
+# Performs an update scan, and refreshes update related facts, for the puppet module pe_patch.
 # Developed by Nathan Giuliani (nathojg@gmail.com) and Tony Green
 #
-# Unlike the main os_patching_windows script, this code does not need to run as either a scheduled task or locally with invoke-command.
+# Unlike the main pe_patch_windows script, this code does not need to run as either a scheduled task or locally with invoke-command.
 # This is because the Windows Update Scan API is available in a remote session, as long as the user has administrative rights.
-# As a result this script is a little simpler than os_patching_windows.
+# As a result this script is a little simpler than pe_patch_windows.
 #
 # Changelog
 #
@@ -18,10 +18,10 @@
 
 <#
 .SYNOPSIS
-Performs an update scan, and refreshes update related facts, for the puppet module os_patching.
+Performs an update scan, and refreshes update related facts, for the puppet module pe_patch.
 
 .DESCRIPTION
-Performs an update scan, and refreshes update related facts, for the puppet module os_patching. This script is intended to be run as part of the os_patching module, however it will also function standalone.
+Performs an update scan, and refreshes update related facts, for the puppet module pe_patch. This script is intended to be run as part of the pe_patch module, however it will also function standalone.
 
 .PARAMETER UpdateCriteria
 Criteria used for update detection. This ultimately drives which updates will be installed. The detault is "IsInstalled=0 and IsHidden=0" which should be suitable in most cases, and relies on your upstream update approvals. Note that this is not validated, if the syntax is not validated the script will fail. See MSDN doco for valid syntax - https://docs.microsoft.com/en-us/windows/desktop/api/wuapi/nf-wuapi-iupdatesearcher-search.
@@ -32,11 +32,11 @@ param(
     [String]$UpdateCriteria = "IsInstalled=0 and IsHidden=0",
 
     # path to lock file
-    # default to same one as os_patching_windows so this won't run at the same time
-    [String]$LockFile = (Join-Path -Path ($env:programdata) -ChildPath "os_patching\os_patching_windows.lock"),
+    # default to same one as pe_patch_windows so this won't run at the same time
+    [String]$LockFile = (Join-Path -Path ($env:programdata) -ChildPath "pe_patch\pe_patch_windows.lock"),
 
     # path to logs directory
-    [String]$LogDir = (Join-Path -Path ($env:programdata) -ChildPath "os_patching"),
+    [String]$LogDir = (Join-Path -Path ($env:programdata) -ChildPath "pe_patch"),
 
     # how long to retain log files
     [Int32]$LogFileRetainDays = 30
@@ -79,7 +79,7 @@ function Save-LockFile {
                 # Check the path of the process matching PID in the lock file
                 if ($process.path -match "powershell.exe") {
                     # most likely is another copy of this script
-                    Throw "Lock file found, it appears PID $($process.id) is another copy of os_patching_fact_generation or os_patching_windows. Exiting."
+                    Throw "Lock file found, it appears PID $($process.id) is another copy of pe_patch_fact_generation or pe_patch_windows. Exiting."
                 }
             }
             else {
@@ -252,7 +252,7 @@ function Get-PendingReboot {
 }
 
 function Invoke-RefreshPuppetFacts {
-    # refreshes puppet facts used by os_patching module
+    # refreshes puppet facts used by pe_patch module
     # inputs - $UpdateSession - microsoft update session object
     # outpts - none, saves puppet fact files only
     [CmdletBinding()]
@@ -273,13 +273,13 @@ function Invoke-RefreshPuppetFacts {
     }
 
     #paths to facts
-    $dataDir = 'C:\ProgramData\os_patching'
+    $dataDir = 'C:\ProgramData\pe_patch'
     $updateFile = Join-Path -Path $dataDir -ChildPath 'package_updates'
     $kbFile = Join-Path -Path $dataDir -ChildPath 'missing_update_kbs'
     $secUpdateFile = Join-Path -Path $dataDir -ChildPath 'security_package_updates'
     $rebootReqdFile = Join-Path -Path $dataDir -ChildPath  'reboot_required'
 
-    # create os_patching data dir if required
+    # create pe_patch data dir if required
     if (-not (Test-Path $dataDir)) { [void](New-Item $dataDir -ItemType Directory) }
 
     # output list of required updates
@@ -370,9 +370,9 @@ trap {
 }
 
 # get log file name
-$LogFile = Join-Path -Path $LogDir -ChildPath ("os_patching_fact_generation-{0:yyyy_MM_dd-HH_mm_ss}.log" -f (Get-Date))
+$LogFile = Join-Path -Path $LogDir -ChildPath ("pe_patch_fact_generation-{0:yyyy_MM_dd-HH_mm_ss}.log" -f (Get-Date))
 
-Add-LogEntry "os_patching_windows_fact_generation: started"
+Add-LogEntry "pe_patch_windows_fact_generation: started"
 
 # check and/or create lock file
 Save-LockFile
@@ -384,7 +384,7 @@ try {
     Invoke-RefreshPuppetFacts -UpdateSession (Get-WUSession)
 
     # clean log files
-    Invoke-CleanLogFile -LogFileFilter "os_patching_fact_generation*.log"
+    Invoke-CleanLogFile -LogFileFilter "pe_patch_fact_generation*.log"
 }
 finally {
     # this code is always executed, even when an exception is trapped during main script execution
@@ -392,5 +392,5 @@ finally {
     # remove lock file
     Remove-LockFile
 
-    Add-LogEntry "os_patching_windows_fact_generation: finished"
+    Add-LogEntry "pe_patch_windows_fact_generation: finished"
 }

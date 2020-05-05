@@ -1,2 +1,2 @@
 # From Stdlib::Absolutepath
-type Os_patching::Absolutepath = Variant[Os_patching::Windowspath, Os_patching::Unixpath]
+type Pe_patch::Absolutepath = Variant[Pe_patch::Windowspath, Pe_patch::Unixpath]

@@ -5,7 +5,7 @@
 
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/bin:/usr/local/bin:/usr/local/sbin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/bin
 
-LOCKFILE=/var/run/os_patching_fact_generation.lock
+LOCKFILE=/var/run/pe_patch_fact_generation.lock
 
 trap "{ rm -f $LOCKFILE ; exit 255; }" 2 3 15
 
@@ -48,7 +48,7 @@ case $(facter osfamily) in
   ;;
 esac
 
-DATADIR='/var/cache/os_patching'
+DATADIR='/var/cache/pe_patch'
 UPDATEFILE="$DATADIR/package_updates"
 SECUPDATEFILE="$DATADIR/security_package_updates"
 OSHELDPKGFILE="$DATADIR/os_version_locked_packages"
@@ -66,7 +66,7 @@ fi
 
 if [ ! -d "${DATADIR}" ]
 then
-  logger -p error -t os_patching_fact_generation.sh "Can't find ${DATADIR}, exiting"
+  logger -p error -t pe_patch_fact_generation.sh "Can't find ${DATADIR}, exiting"
   rm $LOCKFILE
   exit 1
 fi
@@ -146,7 +146,7 @@ then
 fi
 
 puppet facts upload 2>/dev/null 1>/dev/null
-logger -p info -t os_patching_fact_generation.sh "patch data fact refreshed"
+logger -p info -t pe_patch_fact_generation.sh "patch data fact refreshed"
 
 rm $LOCKFILE
 exit 0

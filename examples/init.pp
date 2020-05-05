@@ -1,4 +1,4 @@
-class { 'os_patching':
+class { 'pe_patch':
   patch_window     => 'Week3',
   reboot_override  => 'smart',
   fact_upload      => false,
