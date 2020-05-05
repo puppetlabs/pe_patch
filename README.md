@@ -1,5 +1,6 @@
-[![Build Status](https://travis-ci.org/albatrossflavour/puppet_os_patching.svg?branch=master)](https://travis-ci.org/albatrossflavour/puppet_os_patching)
-# os_patching
+# pe_patch
+
+This repo is a fork of albatrossflavour/puppet_os_patching.
 
 This module contains a set of tasks and custom facts to allow the automation of and reporting on operating system patching. Currently patching works on Linux (Redhat, Suse and Debian derivatives) and Windows (Server 2008 through to 2019 have been tested).
 
@@ -15,17 +16,17 @@ Puppet Enterprise tasks and Bolt have opened up methods to integrate operating s
 
 If you're looking for a simple way to report on your OS patch levels, this module will show all updates which are outstanding, including which are related to security updates.  Do you want to enable self-service patching?  This module will use Puppet's RBAC and orchestration and task execution facilities to give you that power.
 
-It also uses security metadata (where available) to determine if there are security updates.  On Redhat, this is provided from Redhat as additional metadata in YUM.  On Debian, checks are done for which repo the updates are coming from.  On Windows, this information is provided by default. There is a parameter to the os_patching::patch_server task to only apply security updates.
+It also uses security metadata (where available) to determine if there are security updates.  On Redhat, this is provided from Redhat as additional metadata in YUM.  On Debian, checks are done for which repo the updates are coming from.  On Windows, this information is provided by default. There is a parameter to the pe_patch::patch_server task to only apply security updates.
 
 Blackout windows enable the support for time based change freezes where no patching can happen.  There can be multiple windows defined and each which will automatically expire after reaching the defined end date.
 
 ## Setup
 
-### What os_patching affects
+### What pe_patch affects
 
-The module provides an additional fact (`os_patching`) and has a task to allow the patching of a server.  When the `os_patching` manifest is added to a node it installs a script and cron job (Linux) or scheduled task (Windows) to check for available updates and generate cache data used by the `os_patching` fact.
+The module provides an additional fact (`pe_patch`) and has a task to allow the patching of a server.  When the `pe_patch` manifest is added to a node it installs a script and cron job (Linux) or scheduled task (Windows) to check for available updates and generate cache data used by the `pe_patch` fact.
 
-### Beginning with os_patching
+### Beginning with pe_patch
 
 Install the module using the Puppetfile, include it on your nodes and then use the provided tasks to carry out patching.
 
@@ -34,12 +35,12 @@ Install the module using the Puppetfile, include it on your nodes and then use t
 ### Manifest
 Include the module:
 ```puppet
-include os_patching
+include pe_patch
 ```
 
 More advanced usage:
 ```puppet
-class { 'os_patching':
+class { 'pe_patch':
   patch_window     => 'Week3',
   blackout_windows => { 'End of year change freeze':
     {
@@ -55,10 +56,10 @@ In that example, the node is assigned to a "patch window", will be forced to reb
 ### Task
 Run a basic patching task from the command line:
 ```bash
-os_patching::patch_server - Carry out OS patching on the server, optionally including a reboot and/or only applying security related updates
+pe_patch::patch_server - Carry out OS patching on the server, optionally including a reboot and/or only applying security related updates
 
 USAGE:
-$ puppet task run os_patching::patch_server [dpkg_params=<value>] [reboot=<value>] [security_only=<value>] [timeout=<value>] [yum_params=<value>] <[--nodes, -n <node-names>] | [--query, -q <'query'>]>
+$ puppet task run pe_patch::patch_server [dpkg_params=<value>] [reboot=<value>] [security_only=<value>] [timeout=<value>] [yum_params=<value>] <[--nodes, -n <node-names>] | [--query, -q <'query'>]>
 
 PARAMETERS:
 - dpkg_params : Optional[String]
@@ -75,14 +76,14 @@ PARAMETERS:
 
 Example:
 ```bash
-$ puppet task run os_patching::patch_server --params='{"reboot": "patched", "security_only": false}' --query="inventory[certname] { facts.os_patching.patch_window = 'Week3' and facts.os_patching.blocked = false and facts.os_patching.package_update_count > 0}"
+$ puppet task run pe_patch::patch_server --params='{"reboot": "patched", "security_only": false}' --query="inventory[certname] { facts.pe_patch.patch_window = 'Week3' and facts.pe_patch.blocked = false and facts.pe_patch.package_update_count > 0}"
 ```
 
 This will run a patching task against all nodes which have facts matching:
 
-* `os_patching.patch_window` of 'Week3'
-* `os_patching.blocked` equals `false`
-* `os_patching.package_update_count` greater than 0
+* `pe_patch.patch_window` of 'Week3'
+* `pe_patch.blocked` equals `false`
+* `pe_patch.package_update_count` greater than 0
 
 The task will apply all patches (`security_only=false`) and will reboot the node after patching (`reboot=true`).
 
@@ -90,10 +91,10 @@ The task will apply all patches (`security_only=false`) and will reboot the node
 
 ### Facts
 
-Most of the reporting is driven by the custom fact `os_patching_data`, for example:
+Most of the reporting is driven by the custom fact `pe_patch_data`, for example:
 
 ```yaml
-# facter -p os_patching
+# facter -p pe_patch
 {
   package_update_count => 0,
   package_updates => [],
@@ -123,7 +124,7 @@ Most of the reporting is driven by the custom fact `os_patching_data`, for examp
 This shows there are no updates which can be applied to this server and the server doesn't need a reboot or any application restarts.  When there are updates to add, you will see similar to this:
 
 ```yaml
-# facter -p os_patching
+# facter -p pe_patch
 {
   package_update_count => 6,
   package_updates => [
@@ -172,17 +173,17 @@ The reboot_required flag is set to true, which means there have been changes to 
 
 The pinned packages entry lists any packages which have been specifically excluded from being patched, from [version lock](https://access.redhat.com/solutions/98873) on Red Hat or by [pinning](https://wiki.debian.org/AptPreferences) in Debian.
 
-Last run shows a summary of the information from the last `os_patching::patch_server` task.
+Last run shows a summary of the information from the last `pe_patch::patch_server` task.
 
-The fact `os_patching.patch_window` can be used to assign nodes to an arbitrary group.  The fact can be used as part of the query fed into the task to determine which nodes to patch:
+The fact `pe_patch.patch_window` can be used to assign nodes to an arbitrary group.  The fact can be used as part of the query fed into the task to determine which nodes to patch:
 
 ```bash
-$ puppet task run os_patching::patch_server --query="inventory[certname] {facts.os_patching.patch_window = 'Week3'}"
+$ puppet task run pe_patch::patch_server --query="inventory[certname] {facts.pe_patch.patch_window = 'Week3'}"
 ```
 
 ### Running custom commands before patching
 
-You can use the parameter `os_patching::pre_patching_command` to supply a file name to be run prior to running the patch job.  The file much be executable and should exit with a return code of `0` if the command was successful.
+You can use the parameter `pe_patch::pre_patching_command` to supply a file name to be run prior to running the patch job.  The file much be executable and should exit with a return code of `0` if the command was successful.
 
 The entry must be a single command, with no arguments or parameters.
 
@@ -194,7 +195,7 @@ There are two options which can be set that control how the reboot decision is m
 
 #### The `reboot` parameter
 
-The reboot parameter is set in the `os_patching::patch_server` task.  It takes the following options:
+The reboot parameter is set in the `pe_patch::patch_server` task.  It takes the following options:
 
 * "always"
   * No matter what, **always** reboot the node during the task run, even if no patches are required
@@ -211,9 +212,9 @@ These parameters set the default action for all nodes during the run of the task
 
 #### The `reboot_override` fact
 
-The reboot override fact is part of the `os_patching` fact set.  It is set through the os_patching manifest and has a default of "default".
+The reboot override fact is part of the `pe_patch` fact set.  It is set through the pe_patch manifest and has a default of "default".
 
-If it is set to "default" it will take whatever reboot actions are listed in the `os_patching::patch_server` task.  The other options it takes are the same as those for the reboot parameter (always, never, patched, smart).
+If it is set to "default" it will take whatever reboot actions are listed in the `pe_patch::patch_server` task.  The other options it takes are the same as those for the reboot parameter (always, never, patched, smart).
 
 During the task run, any value other than "default" will override the value for the `reboot` parameter.  For example, if the `reboot` parameter is set to "never" but the `reboot_override` fact is set to "always", the node will always reboot.  If the `reboot` parameter is set to "never" but the `reboot_override` fact is set to "default", the node will use the `reboot` parameter and not reboot.
 
@@ -263,7 +264,7 @@ If patching was blocked, the task will report similar to below:
 Error: Task exited : 100
 Patching blocked
 ```
-A summary of the patch run is also written to `/var/cache/os_patching/run_history`, the last line of which is used by the `os_patching.last_run` fact.
+A summary of the patch run is also written to `/var/cache/pe_patch/run_history`, the last line of which is used by the `pe_patch.last_run` fact.
 
 ```bash
 2018-08-07T14:47:24+10:00|No patches to apply|Success|false|false|
@@ -275,43 +276,43 @@ A summary of the patch run is also written to `/var/cache/os_patching/run_histor
 2018-08-08T07:53:59+10:00|Patching blocked |100|||
 ```
 
-### OS_Patching Directory and Files
+### pe_patch Directory and Files
 
-Each system with the os_patching class applied will have several files and a directory managed by the manifest.
+Each system with the pe_patch class applied will have several files and a directory managed by the manifest.
 
 #### Fact Generation Script
 
 The script used to scan for updates and generate the fact data is stored in the following location based on the OS type:
 
-* Linux - `/usr/local/bin/os_patching_fact_generation.sh`
-* Windows - `c:\ProgramData\os_patching\os_patching_fact_generation.ps1`
+* Linux - `/usr/local/bin/pe_patch_fact_generation.sh`
+* Windows - `c:\ProgramData\pe_patch\pe_patch_fact_generation.ps1`
 
-#### os_patching directory
+#### pe_patch directory
 
-The os_patching directory contains the various control files needed for this module and its tasks to work correctly.  The locations are as follows:
+The pe_patch directory contains the various control files needed for this module and its tasks to work correctly.  The locations are as follows:
 
-* Linux - `/var/cache/os_patching`
-* Windows - `c:\ProgramData\os_patching`
+* Linux - `/var/cache/pe_patch`
+* Windows - `c:\ProgramData\pe_patch`
 
 The following files are stored in this directory:
 
 * `blackout_windows` : contains name, start and end time for all blackout windows
-* `package_updates` : a list of all package updates available, populated by `os_patching_fact_generation.sh` (Linux) or `os_patching_fact_generation.ps1` (Windows), triggered through cron (Linux) or task scheduler (Windows)
-* `security_package_updates` : a list of all security_package updates available, populated by `os_patching_fact_generation.sh` (Linux) or `os_patching_fact_generation.ps1` (Windows), triggered through cron (Linux) or task scheduler (Windows)
-* `run_history` : a summary of each run of the `os_patching::patch_server` task, populated by the task
+* `package_updates` : a list of all package updates available, populated by `pe_patch_fact_generation.sh` (Linux) or `pe_patch_fact_generation.ps1` (Windows), triggered through cron (Linux) or task scheduler (Windows)
+* `security_package_updates` : a list of all security_package updates available, populated by `pe_patch_fact_generation.sh` (Linux) or `pe_patch_fact_generation.ps1` (Windows), triggered through cron (Linux) or task scheduler (Windows)
+* `run_history` : a summary of each run of the `pe_patch::patch_server` task, populated by the task
 * `reboot_override` : if present, overrides the `reboot=` parameter to the task
-* `patch_window` : if present, sets the value for the fact `os_patching.patch_window`
+* `patch_window` : if present, sets the value for the fact `pe_patch.patch_window`
 * `reboot_required` : if the OS can determine that the server needs to be rebooted due to package changes, this file contains the result.  Populates the fact reboot.reboot_required.
 * `apps_to_restart` : (Linux only) a list of processes (PID and command line) that haven't been restarted since the packages they use were patched.  Sets the fact reboot.apps_needing_restart and .reboot.app_restart_required.
 
-With the exception of the run_history file and Windows os_patching scripts, all files in the os_patching directory will be regenerated after a puppet run and a run of the `os_patching_fact_generation.sh` or `os_patching_fact_generation.ps1` script, which runs every hour by default.  If run_history is removed, the same information can be obtained from PDB, apt/yum, syslog or the Windows event log.
+With the exception of the run_history file and Windows pe_patch scripts, all files in the pe_patch directory will be regenerated after a puppet run and a run of the `pe_patch_fact_generation.sh` or `pe_patch_fact_generation.ps1` script, which runs every hour by default.  If run_history is removed, the same information can be obtained from PDB, apt/yum, syslog or the Windows event log.
 
 ### Windows Systems
 
 As Windows includes no native command line tools to manage update installation, PowerShell scripts have been written utilising the Windows Update agent APIs that handle the update search, download, and installation process:
 
-* `os_patching_fact_generation.ps1` which scans for updates and generates fact data (as above)
-* `os_patching_windows.ps1` is utilised by the `patch_server` task and underlying ruby script to handle the update installation process
+* `pe_patch_fact_generation.ps1` which scans for updates and generates fact data (as above)
+* `pe_patch_windows.ps1` is utilised by the `patch_server` task and underlying ruby script to handle the update installation process
 
 #### Supported Windows Versions
 
