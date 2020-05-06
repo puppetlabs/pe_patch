@@ -11,8 +11,8 @@ class sample_patching_profile (
   # Merge the blackout windows from the parameter and hiera
   $full_blackout_windows = $hiera_blackout_windows + $blackout_windows
 
-  # Call the os_patching class to set everything up
-  class { 'os_patching':
+  # Call the pe_patch class to set everything up
+  class { 'pe_patch':
     patch_window     => $patch_window,
     reboot_override  => $reboot_override,
     blackout_windows => $full_blackout_windows,

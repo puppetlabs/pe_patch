@@ -1,3 +1,3 @@
-class { 'os_patching':
+class { 'pe_patch':
   ensure => absent,
 }
