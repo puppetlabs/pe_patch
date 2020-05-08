@@ -30,11 +30,11 @@ the `pe_patch` fact.
 
 #### Examples
 
-##### assign node to 'Week3' patching window, force a reboot and create a blackout window for the end of the year
+##### assign node to 'Week3' patching group, force a reboot and create a blackout window for the end of the year
 
 ```puppet
 class { 'pe_patch':
-  patch_window     => 'Week3',
+  patch_group      => 'Week3',
   reboot_override  => 'always',
   blackout_windows => { 'End of year change freeze':
     {
@@ -49,7 +49,7 @@ class { 'pe_patch':
 
 ```puppet
 class profiles::soe::patching (
-  $patch_window     = undef,
+  $patch_group      = undef,
   $blackout_windows = undef,
   $reboot_override  = undef,
 ){
@@ -61,7 +61,7 @@ class profiles::soe::patching (
 
   # Call the pe_patch class to set everything up
   class { 'pe_patch':
-    patch_window     => $patch_window,
+    patch_group      => $patch_group,
     reboot_override  => $reboot_override,
     blackout_windows => $full_blackout_windows,
   }
@@ -202,11 +202,11 @@ This overrides the setting in the task
 
 Default value: 'default'
 
-##### `patch_window`
+##### `patch_group`
 
 Data type: `String`
 
-A freeform text entry used to allocate a node to a specific patch window (Optional)
+A freeform text entry used to allocate a node to a specific patch group (Optional)
 
 Default value: `undef`
 

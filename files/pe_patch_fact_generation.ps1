@@ -4,9 +4,9 @@
 # Performs an update scan, and refreshes update related facts, for the puppet module pe_patch.
 # Developed by Nathan Giuliani (nathojg@gmail.com) and Tony Green
 #
-# Unlike the main pe_patch_windows script, this code does not need to run as either a scheduled task or locally with invoke-command.
+# Unlike the main pe_patch_groups script, this code does not need to run as either a scheduled task or locally with invoke-command.
 # This is because the Windows Update Scan API is available in a remote session, as long as the user has administrative rights.
-# As a result this script is a little simpler than pe_patch_windows.
+# As a result this script is a little simpler than pe_patch_groups.
 #
 # Changelog
 #
@@ -32,8 +32,8 @@ param(
     [String]$UpdateCriteria = "IsInstalled=0 and IsHidden=0",
 
     # path to lock file
-    # default to same one as pe_patch_windows so this won't run at the same time
-    [String]$LockFile = (Join-Path -Path ($env:programdata) -ChildPath "pe_patch\pe_patch_windows.lock"),
+    # default to same one as pe_patch_groups so this won't run at the same time
+    [String]$LockFile = (Join-Path -Path ($env:programdata) -ChildPath "pe_patch\pe_patch_groups.lock"),
 
     # path to logs directory
     [String]$LogDir = (Join-Path -Path ($env:programdata) -ChildPath "pe_patch"),
@@ -79,7 +79,7 @@ function Save-LockFile {
                 # Check the path of the process matching PID in the lock file
                 if ($process.path -match "powershell.exe") {
                     # most likely is another copy of this script
-                    Throw "Lock file found, it appears PID $($process.id) is another copy of pe_patch_fact_generation or pe_patch_windows. Exiting."
+                    Throw "Lock file found, it appears PID $($process.id) is another copy of pe_patch_fact_generation or pe_patch_groups. Exiting."
                 }
             }
             else {
@@ -372,7 +372,7 @@ trap {
 # get log file name
 $LogFile = Join-Path -Path $LogDir -ChildPath ("pe_patch_fact_generation-{0:yyyy_MM_dd-HH_mm_ss}.log" -f (Get-Date))
 
-Add-LogEntry "pe_patch_windows_fact_generation: started"
+Add-LogEntry "pe_patch_groups_fact_generation: started"
 
 # check and/or create lock file
 Save-LockFile
@@ -392,5 +392,5 @@ finally {
     # remove lock file
     Remove-LockFile
 
-    Add-LogEntry "pe_patch_windows_fact_generation: finished"
+    Add-LogEntry "pe_patch_groups_fact_generation: finished"
 }

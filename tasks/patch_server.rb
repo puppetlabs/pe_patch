@@ -287,7 +287,7 @@ if params['clean_cache'] && params['clean_cache'] == true
 end
 
 # Refresh the patching fact cache on non-windows systems
-# Windows scans can take a long time, and we do one at the start of the pe_patch_windows script anyway.
+# Windows scans can take a long time, and we do one at the start of the pe_patch_groups script anyway.
 # No need to do yet another scan prior to this, it just wastes valuable time.
 if facts['values']['os']['family'] != 'windows'
   _fact_out, stderr, status = Open3.capture3(fact_generation_cmd)
@@ -560,7 +560,7 @@ elsif facts['values']['os']['family'] == 'windows'
 
   # build patching command
   powershell_cmd = "#{ENV['systemroot']}/system32/WindowsPowerShell/v1.0/powershell.exe -NonInteractive -ExecutionPolicy RemoteSigned -File"
-  win_patching_cmd = "#{powershell_cmd} #{params['_installdir']}/pe_patch/files/pe_patch_windows.ps1 #{security_arg} -Timeout #{timeout}"
+  win_patching_cmd = "#{powershell_cmd} #{params['_installdir']}/pe_patch/files/pe_patch_groups.ps1 #{security_arg} -Timeout #{timeout}"
 
   log.info 'Running patching powershell script'
 

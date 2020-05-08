@@ -1,7 +1,7 @@
-### Show all patch windows
+### Show all patch groups
 
 ```
-puppet=query 'fact_contents[value, count()] { path = ["pe_patch", "patch_window"] group by value }'
+puppet=query 'fact_contents[value, count()] { path = ["pe_patch", "patch_group"] group by value }'
 ```
 
 ### Show nodes with available updates

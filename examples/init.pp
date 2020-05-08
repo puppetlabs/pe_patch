@@ -1,5 +1,5 @@
 class { 'pe_patch':
-  patch_window     => 'Week3',
+  patch_group      => 'Week3',
   reboot_override  => 'smart',
   fact_upload      => false,
   blackout_windows => {

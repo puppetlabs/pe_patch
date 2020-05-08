@@ -11,12 +11,12 @@ pp_class_base = <<-PUPPETCODE
     }
 PUPPETCODE
 
-pp_class_patch_window = <<-PUPPETCODE
+pp_class_patch_group = <<-PUPPETCODE
     class { 'cron':
       manage_service => false,
     }
     class { 'pe_patch':
-      patch_window => 'Week1',
+      patch_group  => 'Week1',
       fact_upload  => false,
     }
 PUPPETCODE
@@ -48,7 +48,7 @@ describe 'pe_patch module' do
       expect(file(cache_dir + '/reboot_required')).to be_file
       expect(file(cache_dir + '/reboot_override')).to be_file
       expect(file(cache_dir + '/blackout_windows')).not_to be_file
-      expect(file(cache_dir + '/patch_window')).not_to be_file
+      expect(file(cache_dir + '/patch_group')).not_to be_file
       expect(file('/usr/local/bin/pe_patch_fact_generation.sh')).to be_file
       if host_inventory['facter']['os']['name'] == 'CentOS' || host_inventory['facter']['os']['name'] == 'Ubuntu'
         run_bolt_task('pe_patch::clean_cache')
@@ -70,17 +70,17 @@ describe 'pe_patch module with blackout window' do
       expect(file(cache_dir + '/reboot_override')).to be_file
       expect(file(cache_dir + '/blackout_windows')).to be_file
       expect(file(cache_dir + '/blackout_windows')).to contain (/End of year/)
-      expect(file(cache_dir + '/patch_window')).not_to be_file
+      expect(file(cache_dir + '/patch_group')).not_to be_file
       expect(file('/usr/local/bin/pe_patch_fact_generation.sh')).to be_file
       expect { run_bolt_task('pe_patch::patch_server') }.to raise_error(/Patching blocked/)
     end
   end
 end
 
-describe 'pe_patch module with patching window' do
+describe 'pe_patch module with patching group' do
   context 'base class' do
     it do
-      idempotent_apply(pp_class_patch_window)
+      idempotent_apply(pp_class_patch_group)
       expect(file(cache_dir)).to be_directory
       expect(file(cache_dir + '/security_package_updates')).to be_file
       expect(file(cache_dir + '/package_updates')).to be_file
@@ -88,8 +88,8 @@ describe 'pe_patch module with patching window' do
       expect(file(cache_dir + '/reboot_required')).to be_file
       expect(file(cache_dir + '/reboot_override')).to be_file
       expect(file(cache_dir + '/blackout_windows')).not_to be_file
-      expect(file(cache_dir + '/patch_window')).to be_file
-      expect(file(cache_dir + '/patch_window')).to contain (/Week1/)
+      expect(file(cache_dir + '/patch_group')).to be_file
+      expect(file(cache_dir + '/patch_group')).to contain (/Week1/)
       expect(file('/usr/local/bin/pe_patch_fact_generation.sh')).to be_file
     end
   end

@@ -55,8 +55,8 @@
 # @option blackout_windows [String] :end
 #   End of the blackout window (ISO8601 format)
 #
-# @param patch_window [String]
-#   A freeform text entry used to allocate a node to a specific patch window (Optional)
+# @param patch_group [String]
+#   A freeform text entry used to allocate a node to a specific patch group (Optional)
 #
 # @param pre_patching_command [Pe_patch::Absolutepath]
 #   The full path of the command to run prior to running patching.  Can be used to
@@ -81,9 +81,9 @@
 # @param ensure
 #   `present` to install scripts, cronjobs, files, etc, `absent` to cleanup a system that previously hosted us
 #
-# @example assign node to 'Week3' patching window, force a reboot and create a blackout window for the end of the year
+# @example assign node to 'Week3' patching group, force a reboot and create a blackout window for the end of the year
 #   class { 'pe_patch':
-#     patch_window     => 'Week3',
+#     patch_group      => 'Week3',
 #     reboot_override  => 'always',
 #     blackout_windows => { 'End of year change freeze':
 #       {
@@ -95,7 +95,7 @@
 #
 # @example An example profile to setup patching, sourcing blackout windows from hiera
 #   class profiles::soe::patching (
-#     $patch_window     = undef,
+#     $patch_group      = undef,
 #     $blackout_windows = undef,
 #     $reboot_override  = undef,
 #   ){
@@ -107,7 +107,7 @@
 #
 #     # Call the pe_patch class to set everything up
 #     class { 'pe_patch':
-#       patch_window     => $patch_window,
+#       patch_group      => $patch_group,
 #       reboot_override  => $reboot_override,
 #       blackout_windows => $full_blackout_windows,
 #     }
@@ -139,7 +139,7 @@ class pe_patch (
   Optional[Variant[Boolean, Enum['always', 'never', 'patched', 'smart', 'default']]] $reboot_override = 'default',
   Optional[Pe_patch::Absolutepath] $pre_patching_command = undef,
   Optional[Hash] $blackout_windows   = undef,
-  $patch_window                      = undef,
+  $patch_group                       = undef,
   $patch_cron_hour                   = absent,
   $patch_cron_month                  = absent,
   $patch_cron_monthday               = absent,
@@ -194,8 +194,8 @@ class pe_patch (
     default   => 'absent',
   }
 
-  if ($patch_window and $patch_window !~ /[A-Za-z0-9\-_ ]+/ ) {
-    fail translate(('The patch window can only contain alphanumerics, space, underscore and dash'))
+  if ($patch_group and $patch_group !~ /[A-Za-z0-9\-_ ]+/ ) {
+    fail translate(('The patch group can only contain alphanumerics, space, underscore and dash'))
   }
 
   file { $cache_dir:
@@ -220,7 +220,7 @@ class pe_patch (
     default => 'absent'
   }
 
-  $patch_window_ensure = ($ensure == 'present' and $patch_window ) ? {
+  $patch_group_ensure = ($ensure == 'present' and $patch_group ) ? {
     true    => 'file',
     default => 'absent'
   }
@@ -230,9 +230,9 @@ class pe_patch (
     default => 'absent'
   }
 
-  file { "${cache_dir}/patch_window":
-    ensure  => $patch_window_ensure,
-    content => $patch_window,
+  file { "${cache_dir}/patch_group":
+    ensure  => $patch_group_ensure,
+    content => $patch_group,
   }
 
   file { "${cache_dir}/pre_patching_command":
@@ -300,7 +300,7 @@ class pe_patch (
       subscribe   => File[
         $fact_cmd,
         $cache_dir,
-        "${cache_dir}/patch_window",
+        "${cache_dir}/patch_group",
         "${cache_dir}/reboot_override",
         "${cache_dir}/blackout_windows",
       ],

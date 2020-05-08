@@ -41,7 +41,7 @@ include pe_patch
 More advanced usage:
 ```puppet
 class { 'pe_patch':
-  patch_window     => 'Week3',
+  patch_group      => 'Week3',
   blackout_windows => { 'End of year change freeze':
     {
       'start': '2018-12-15T00:00:00+1000',
@@ -51,7 +51,7 @@ class { 'pe_patch':
 }
 ```
 
-In that example, the node is assigned to a "patch window", will be forced to reboot regardless of the setting specified in the task and has a blackout window defined for the period of 2018-12-15 - 2019-01-15, during which time no patching through the task can be carried out.
+In that example, the node is assigned to a "patch group", will be forced to reboot regardless of the setting specified in the task and has a blackout window defined for the period of 2018-12-15 - 2019-01-15, during which time no patching through the task can be carried out.
 
 ### Task
 Run a basic patching task from the command line:
@@ -76,12 +76,12 @@ PARAMETERS:
 
 Example:
 ```bash
-$ puppet task run pe_patch::patch_server --params='{"reboot": "patched", "security_only": false}' --query="inventory[certname] { facts.pe_patch.patch_window = 'Week3' and facts.pe_patch.blocked = false and facts.pe_patch.package_update_count > 0}"
+$ puppet task run pe_patch::patch_server --params='{"reboot": "patched", "security_only": false}' --query="inventory[certname] { facts.pe_patch.patch_group = 'Week3' and facts.pe_patch.blocked = false and facts.pe_patch.package_update_count > 0}"
 ```
 
 This will run a patching task against all nodes which have facts matching:
 
-* `pe_patch.patch_window` of 'Week3'
+* `pe_patch.patch_group` of 'Week3'
 * `pe_patch.blocked` equals `false`
 * `pe_patch.package_update_count` greater than 0
 
@@ -103,7 +103,7 @@ Most of the reporting is driven by the custom fact `pe_patch_data`, for example:
   blocked => false,
   blocked_reasons => [],
   blackouts => {},
-  patch_window = 'Week3',
+  patch_group => 'Week3',
   pinned_packages => [],
   last_run => {
     date => "2018-08-07T21:55:20+10:00",
@@ -146,7 +146,7 @@ This shows there are no updates which can be applied to this server and the serv
     }
   },
   pinned_packages => [],
-  patch_window = 'Week3',
+  patch_group => 'Week3',
   last_run => {
     date => "2018-08-07T21:55:20+10:00",
     message => "Patching complete",
@@ -175,10 +175,10 @@ The pinned packages entry lists any packages which have been specifically exclud
 
 Last run shows a summary of the information from the last `pe_patch::patch_server` task.
 
-The fact `pe_patch.patch_window` can be used to assign nodes to an arbitrary group.  The fact can be used as part of the query fed into the task to determine which nodes to patch:
+The fact `pe_patch.patch_group` can be used to assign nodes to an arbitrary group.  The fact can be used as part of the query fed into the task to determine which nodes to patch:
 
 ```bash
-$ puppet task run pe_patch::patch_server --query="inventory[certname] {facts.pe_patch.patch_window = 'Week3'}"
+$ puppet task run pe_patch::patch_server --query="inventory[certname] {facts.pe_patch.patch_group = 'Week3'}"
 ```
 
 ### Running custom commands before patching
@@ -301,7 +301,7 @@ The following files are stored in this directory:
 * `security_package_updates` : a list of all security_package updates available, populated by `pe_patch_fact_generation.sh` (Linux) or `pe_patch_fact_generation.ps1` (Windows), triggered through cron (Linux) or task scheduler (Windows)
 * `run_history` : a summary of each run of the `pe_patch::patch_server` task, populated by the task
 * `reboot_override` : if present, overrides the `reboot=` parameter to the task
-* `patch_window` : if present, sets the value for the fact `pe_patch.patch_window`
+* `patch_group` : if present, sets the value for the fact `pe_patch.patch_group`
 * `reboot_required` : if the OS can determine that the server needs to be rebooted due to package changes, this file contains the result.  Populates the fact reboot.reboot_required.
 * `apps_to_restart` : (Linux only) a list of processes (PID and command line) that haven't been restarted since the packages they use were patched.  Sets the fact reboot.apps_needing_restart and .reboot.app_restart_required.
 
@@ -312,7 +312,7 @@ With the exception of the run_history file and Windows pe_patch scripts, all fil
 As Windows includes no native command line tools to manage update installation, PowerShell scripts have been written utilising the Windows Update agent APIs that handle the update search, download, and installation process:
 
 * `pe_patch_fact_generation.ps1` which scans for updates and generates fact data (as above)
-* `pe_patch_windows.ps1` is utilised by the `patch_server` task and underlying ruby script to handle the update installation process
+* `pe_patch_groups.ps1` is utilised by the `patch_server` task and underlying ruby script to handle the update installation process
 
 #### Supported Windows Versions
 

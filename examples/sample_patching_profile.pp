@@ -1,6 +1,6 @@
 # lint:ignore:autoloader_layout
 class sample_patching_profile (
-  $patch_window     = undef,
+  $patch_group      = undef,
   $blackout_windows = undef,
   $reboot_override  = undef,
 ){
@@ -13,7 +13,7 @@ class sample_patching_profile (
 
   # Call the pe_patch class to set everything up
   class { 'pe_patch':
-    patch_window     => $patch_window,
+    patch_group      => $patch_group,
     reboot_override  => $reboot_override,
     blackout_windows => $full_blackout_windows,
   }
