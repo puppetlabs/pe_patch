@@ -4,7 +4,7 @@ You can use the puppet facts to query the patching status on your nodes.
 
 
 ```bash
-root@puppetmaster ~ # puppet-task run facter_task fact=os_patching --nodes centos.example.com --format json  | jq '.'
+root@puppetmaster ~ # puppet-task run facter_task fact=pe_patch --nodes centos.example.com --format json  | jq '.'
 ```
 
 The output will look like this:
@@ -21,7 +21,7 @@ The output will look like this:
       ]
     },
     "params": {
-      "fact": "os_patching"
+      "fact": "pe_patch"
     },
     "transport": "pxp",
     "description": "",
@@ -34,7 +34,7 @@ The output will look like this:
       "name": "centos.example.com",
       "state": "finished",
       "results": {
-        "os_patching": {
+        "pe_patch": {
           "pinned_packages": [],
           "blackouts": {
             "Test change freeze 2": {
@@ -67,12 +67,12 @@ The output will look like this:
 
 To show summary info for your last run:
 ```bash
-puppet-task run facter_task fact=os_patching -q 'nodes[certname] { }' --format json
+puppet-task run facter_task fact=pe_patch -q 'nodes[certname] { }' --format json
 ```
 
 You can view this in a nicer format using 'jq':
 ```bash
-puppet-task run facter_task fact=os_patching -q 'nodes[certname] { }' --format json  | jq '.items[] | {node: .name, status: .results.os_patching.last_run.return_code, message: .results.os_patching.last_run.message, date: .results.os_patching.last_run.date}'
+puppet-task run facter_task fact=pe_patch -q 'nodes[certname] { }' --format json  | jq '.items[] | {node: .name, status: .results.pe_patch.last_run.return_code, message: .results.pe_patch.last_run.message, date: .results.pe_patch.last_run.date}'
 ```
 
 which will output:
