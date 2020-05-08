@@ -5,36 +5,36 @@
 
 **Classes**
 
-* [`os_patching`](#os_patching): This manifest sets up a script and cron job to populate
-the `os_patching` fact.
+* [`pe_patch`](#pe_patch): This manifest sets up a script and cron job to populate
+the `pe_patch` fact.
 
 **Tasks**
 
 * [`clean_cache`](#clean_cache): Clean patch caches (yum/dpkg) via a task
 * [`patch_server`](#patch_server): Carry out OS patching on the server, optionally including a reboot and/or only applying security related updates
-* [`refresh_fact`](#refresh_fact): Force a refresh of the os_patching fact cache via a task
+* [`refresh_fact`](#refresh_fact): Force a refresh of the pe_patch fact cache via a task
 
 **Plans**
 
-* [`os_patching::patch_after_healthcheck`](#os_patchingpatch_after_healthcheck): An example plan that uses the
+* [`pe_patch::patch_after_healthcheck`](#pe_patchpatch_after_healthcheck): An example plan that uses the
 [puppet health check](https://forge.puppet.com/albatrossflavour/puppet_health_check)
 module to perform a pre-check on the nodes you're planning to patch.  If the nodes pass the
 check, they get patched
 
 ## Classes
 
-### os_patching
+### pe_patch
 
 This manifest sets up a script and cron job to populate
-the `os_patching` fact.
+the `pe_patch` fact.
 
 #### Examples
 
-##### assign node to 'Week3' patching window, force a reboot and create a blackout window for the end of the year
+##### assign node to 'Week3' patching group, force a reboot and create a blackout window for the end of the year
 
 ```puppet
-class { 'os_patching':
-  patch_window     => 'Week3',
+class { 'pe_patch':
+  patch_group      => 'Week3',
   reboot_override  => 'always',
   blackout_windows => { 'End of year change freeze':
     {
@@ -49,7 +49,7 @@ class { 'os_patching':
 
 ```puppet
 class profiles::soe::patching (
-  $patch_window     = undef,
+  $patch_group      = undef,
   $blackout_windows = undef,
   $reboot_override  = undef,
 ){
@@ -59,9 +59,9 @@ class profiles::soe::patching (
   # Merge the blackout windows from the parameter and hiera
   $full_blackout_windows = $hiera_blackout_windows + $blackout_windows
 
-  # Call the os_patching class to set everything up
-  class { 'os_patching':
-    patch_window     => $patch_window,
+  # Call the pe_patch class to set everything up
+  class { 'pe_patch':
+    patch_group      => $patch_group,
     reboot_override  => $reboot_override,
     blackout_windows => $full_blackout_windows,
   }
@@ -77,20 +77,20 @@ class profiles::soe::patching (
 ##### Run patching on the node `centos.example.com` using the smart reboot option
 
 ```puppet
-puppet task run os_patching::patch_server --params '{"reboot": "smart"}' --nodes centos.example.com
+puppet task run pe_patch::patch_server --params '{"reboot": "smart"}' --nodes centos.example.com
 ```
 
 ##### Remove from a managed system
 
 ```puppet
-class { 'os_patching':
+class { 'pe_patch':
   ensure => absent,
 }
 ```
 
 #### Parameters
 
-The following parameters are available in the `os_patching` class.
+The following parameters are available in the `pe_patch` class.
 
 ##### `patch_data_owner`
 
@@ -129,7 +129,7 @@ Default value: `false`
 
 Data type: `Boolean`
 
-If there are warnings present in the os_patching fact, should the patching task run?
+If there are warnings present in the pe_patch fact, should the patching task run?
 If `true` the run will abort and take no action
 If `false` the run will continue and attempt to patch (default)
 
@@ -202,11 +202,11 @@ This overrides the setting in the task
 
 Default value: 'default'
 
-##### `patch_window`
+##### `patch_group`
 
 Data type: `String`
 
-A freeform text entry used to allocate a node to a specific patch window (Optional)
+A freeform text entry used to allocate a node to a specific patch group (Optional)
 
 Default value: `undef`
 
@@ -342,13 +342,13 @@ Should the yum/dpkg caches be cleaned at the start of the task? (Defaults to fal
 
 ### refresh_fact
 
-Force a refresh of the os_patching fact cache via a task
+Force a refresh of the pe_patch fact cache via a task
 
 **Supports noop?** false
 
 ## Plans
 
-### os_patching::patch_after_healthcheck
+### pe_patch::patch_after_healthcheck
 
 An example plan that uses the
 [puppet health check](https://forge.puppet.com/albatrossflavour/puppet_health_check)
@@ -357,7 +357,7 @@ check, they get patched
 
 #### Parameters
 
-The following parameters are available in the `os_patching::patch_after_healthcheck` plan.
+The following parameters are available in the `pe_patch::patch_after_healthcheck` plan.
 
 ##### `nodes`
 

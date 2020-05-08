@@ -102,7 +102,7 @@ param(
     [Int32]$MaxUpdates,
 
     # path to lock file
-    [String]$LockFile = "$($env:programdata)\pe_patch\pe_patch_windows.lock",
+    [String]$LockFile = "$($env:programdata)\pe_patch\pe_patch_groups.lock",
 
     # path to logs directory
     [String]$LogDir = "$($env:programdata)\pe_patch",
@@ -172,7 +172,7 @@ function Save-LockFile {
                 # Check the path of the process matching PID in the lock file
                 if ($process.path -match "powershell.exe") {
                     # most likely is another copy of this script
-                    Throw "Lock file found, it appears PID $($process.id) is another copy of pe_patch_fact_generation or pe_patch_windows. Exiting."
+                    Throw "Lock file found, it appears PID $($process.id) is another copy of pe_patch_fact_generation or pe_patch_groups. Exiting."
                 }
             }
             else {
@@ -760,7 +760,7 @@ $scriptBlock = {
         $updateInstallResults
     }
 
-    Add-LogEntry -Output Verbose "pe_patch_windows scriptblock: starting"
+    Add-LogEntry -Output Verbose "pe_patch_groups scriptblock: starting"
 
     #create update session
     $wuSession = Get-WUSession
@@ -784,7 +784,7 @@ $scriptBlock = {
         Add-LogEntry "##Output File is not applicable"
     }
 
-    Add-LogEntry -Output Verbose "pe_patch_windows scriptblock: finished"
+    Add-LogEntry -Output Verbose "pe_patch_groups scriptblock: finished"
 
     # return log
     $script:log
@@ -809,7 +809,7 @@ trap {
 # get log file name
 $LogFile = Join-Path -Path $LogDir -ChildPath ("pe_patch-{0:yyyy_MM_dd-HH_mm_ss}.log" -f (Get-Date))
 
-Add-LogEntry "pe_patch_windows: started"
+Add-LogEntry "pe_patch_groups: started"
 
 if ($null -ne $Timeout -and $Timeout -ge 1) {
     $endTime = [datetime]::now.AddSeconds($Timeout)
@@ -859,5 +859,5 @@ finally {
     # remove lock file
     Remove-LockFile
 
-    Add-LogEntry "pe_patch_windows: finished"
+    Add-LogEntry "pe_patch_groups: finished"
 }

@@ -87,17 +87,17 @@ describe 'pe_patch' do
         it { is_expected.to compile.and_raise_error(/reboot_override/) }
       end
 
-      context 'with patch_window => $#&!RYYQ!' do
-        let(:params) { {'patch_window' => '(((((##(@(!$#&!RYYQ!'} }
+      context 'with patch_group => $#&!RYYQ!' do
+        let(:params) { {'patch_group' => '(((((##(@(!$#&!RYYQ!'} }
         it { is_expected.to compile }
       end
 
-      context 'with patch_window => Week3' do
-        let(:params) { {'patch_window' => 'Week3'} }
-        it { is_expected.to contain_file(cache_dir + '/patch_window').with({
+      context 'with patch_group => Week3' do
+        let(:params) { {'patch_group' => 'Week3'} }
+        it { is_expected.to contain_file(cache_dir + '/patch_group').with({
           'ensure' => 'file',
         })}
-        it { is_expected.to contain_file(cache_dir + '/patch_window').with_content(/^Week3$/)}
+        it { is_expected.to contain_file(cache_dir + '/patch_group').with_content(/^Week3$/)}
       end
 
       context 'with pre_patching_command => /bin/true' do
@@ -138,7 +138,7 @@ describe 'pe_patch' do
         'ensure' => 'absent',
       })}
 
-      it { is_expected.to contain_file(cache_dir + '/patch_window').with({
+      it { is_expected.to contain_file(cache_dir + '/patch_group').with({
         'ensure' => 'absent',
       })}
 

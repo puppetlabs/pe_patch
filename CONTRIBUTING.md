@@ -1,6 +1,6 @@
-# Contributing to os_patching
+# Contributing to pe_patch
 
-:+1::tada: Welcome and thanks for considering contributing to the os_patching module :tada::+1:
+:+1::tada: Welcome and thanks for considering contributing to the pe_patch module :tada::+1:
 
 Below are some instructions to get you started doing that very thing while setting expectations around code quality as well as a few tips for making the process as easy as possible.
 
@@ -44,7 +44,7 @@ Below are some instructions to get you started doing that very thing while setti
 
 - [x] the first line of my commit message includes:
 
-  - [x] an issue number (if applicable), e.g. "(MODULES-xxxx) This is the first line" 
+  - [x] an issue number (if applicable), e.g. "(PE-xxxx) This is the first line" 
 
   - [x] a short description (50 characters is the soft limit, excluding ticket number(s))
 
@@ -60,9 +60,7 @@ Below are some instructions to get you started doing that very thing while setti
 
 ### Pre-requisites
 
-- Make sure you have a [GitHub account](https://github.com/join)
-
-- [Create a ticket](https://github.com/albatrossflavour/puppet_os_patching/issues/new/choose) if one [does not already exist](https://github.com/albatrossflavour/puppet_os_patching/issues).
+- Create a JIRA ticket
 
 ### Push and PR
 
@@ -135,7 +133,7 @@ Below are some instructions to get you started doing that very thing while setti
 
 ## Getting Started
 
-The os_patching module provides [`Gemfile`](./Gemfile)s, which can tell a Ruby package manager such as [bundler](http://bundler.io/) what Ruby packages, or Gems, are required to build, develop, and test this software.
+The pe_patch module provides [`Gemfile`](./Gemfile)s, which can tell a Ruby package manager such as [bundler](http://bundler.io/) what Ruby packages, or Gems, are required to build, develop, and test this software.
 
 Please make sure you have [bundler installed](http://bundler.io/#getting-started) on your system, and then use it to install all dependencies needed for this project in the project root by running
 
@@ -195,7 +193,7 @@ The module also has acceptance tests, which use [litmus](https://github.com/pupp
 
 # Get Help
 
-* [Puppet community slack](https://slack.puppet.com) - look for `@albatrossflavour`
+* #proj-patching Slack channel
 * [Writing tests](https://puppet.com/docs/puppet/latest/bgtm.html#testing-your-module)
 * [General GitHub documentation](http://help.github.com/)
 * [GitHub pull request documentation](https://help.github.com/en/articles/creating-a-pull-request)

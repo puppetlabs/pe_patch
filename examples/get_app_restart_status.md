@@ -4,7 +4,7 @@ You can use the puppet facts to query the app restart required status on your no
 
 
 ```bash
-puppet-task run facter_task fact=os_patching -q 'nodes[certname] { }' --format json  | jq '.items[] | {node: .name, apps_needing_restart: .results.os_patching.reboots.apps_needing_restart}'
+puppet-task run facter_task fact=pe_patch -q 'nodes[certname] { }' --format json  | jq '.items[] | {node: .name, apps_needing_restart: .results.pe_patch.reboots.apps_needing_restart}'
 ```
 
 The output will look like this:

@@ -162,19 +162,19 @@ else
       data
     end
 
-    # Patch window
-    chunk(:patch_window) do
+    # Patch group
+    chunk(:patch_group) do
       data = {}
-      patchwindowfile = pe_patch_dir + '/patch_window'
-      if File.file?(patchwindowfile)
-        patchwindow = File.open(patchwindowfile, 'r').to_a
-        line = patchwindow.last
+      patchgroupfile = pe_patch_dir + '/patch_group'
+      if File.file?(patchgroupfile)
+        patchgroup = File.open(patchgroupfile, 'r').to_a
+        line = patchgroup.last
         matchdata = line.match(/^(.*)$/)
         if matchdata[0]
-          data['patch_window'] = matchdata[0]
+          data['patch_group'] = matchdata[0]
         end
       else
-        data['patch_window'] = ''
+        data['patch_group'] = ''
       end
       data
     end

@@ -1,6 +1,6 @@
 # Pre_patching_commands
 
-Adding the pre_patching_command parameter to a set of nodes will force the `os_patching::patch_server` task to run the command prior to running patching.
+Adding the pre_patching_command parameter to a set of nodes will force the `pe_patch::patch_server` task to run the command prior to running patching.
 
 It will only be run if patching is allowed, so blockers etc will be honoured.
 
@@ -10,7 +10,7 @@ You can use hiera to set the value:
 
 ```
 ---
-os_patching::pre_patching_command: '/usr/local/bin/pre-patching-script'
+pe_patch::pre_patching_command: '/usr/local/bin/pre-patching-script'
 ```
 
 or it can be set through classification
