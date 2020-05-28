@@ -181,7 +181,7 @@ class pe_patch (
         $fact_file           = 'pe_patch_fact_generation.ps1'
         $fact_mode           = '0770'
       }
-      default: { fail translate(("Unsupported OS : ${facts['kernel']}")) }
+      default: { fail("Unsupported OS : ${facts['kernel']}") }
     }
 
     # calculate full path for fact command/script
@@ -203,7 +203,7 @@ class pe_patch (
     }
 
     if ($patch_group and $patch_group !~ /[A-Za-z0-9\-_ ]+/ ) {
-      fail translate(('The patch group can only contain alphanumerics, space, underscore and dash'))
+      fail('The patch group can only contain alphanumerics, space, underscore and dash')
     }
 
     file { $cache_dir:
@@ -273,16 +273,16 @@ class pe_patch (
       # Validate the information in the blackout_windows hash
       $blackout_windows.each | String $key, Hash $value | {
         if ( $key !~ /^[A-Za-z0-9\-_ ]+$/ ){
-          fail translate(('Blackout description can only contain alphanumerics, space, dash and underscore'))
+          fail('Blackout description can only contain alphanumerics, space, dash and underscore')
         }
         if ( $value['start'] !~ /^\d{,4}-\d{1,2}-\d{1,2}T\d{,2}:\d{,2}:\d{,2}[-\+]\d{,2}:\d{,2}$/ ){
-          fail translate(('Blackout start time must be in ISO 8601 format (YYYY-MM-DDTmm:hh:ss[-+]hh:mm)'))
+          fail('Blackout start time must be in ISO 8601 format (YYYY-MM-DDTmm:hh:ss[-+]hh:mm)')
         }
         if ( $value['end'] !~ /^\d{,4}-\d{1,2}-\d{1,2}T\d{,2}:\d{,2}:\d{,2}[-\+]\d{,2}:\d{,2}$/ ){
-          fail translate(('Blackout end time must be in ISO 8601 format  (YYYY-MM-DDTmm:hh:ss[-+]hh:mm)'))
+          fail('Blackout end time must be in ISO 8601 format  (YYYY-MM-DDTmm:hh:ss[-+]hh:mm)')
         }
         if ( $value['start'] > $value['end'] ){
-          fail translate(('Blackout end time must after the start time'))
+          fail('Blackout end time must after the start time')
         }
       }
     }
@@ -407,7 +407,7 @@ class pe_patch (
           require   => File[$fact_cmd],
         }
       }
-      default: { fail translate(('Unsupported OS'))}
+      default: { fail('Unsupported OS') }
     }
   }
 }
