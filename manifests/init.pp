@@ -148,257 +148,266 @@ class pe_patch (
   Enum['present', 'absent'] $ensure  = 'present',
 ) {
 
-  $fact_exec = $ensure ? {
-    'present' => 'pe_patch::exec::fact',
-    default   => undef,
-  }
-
-  case $::kernel {
-    'Linux': {
-      $fact_upload_cmd     = '/opt/puppetlabs/bin/puppet facts upload'
-      $cache_dir           = '/var/cache/pe_patch'
-      $fact_dir            = '/usr/local/bin'
-      $fact_file           = 'pe_patch_fact_generation.sh'
-      $fact_mode           = '0700'
-      File {
-        owner => $patch_data_owner,
-        group => $patch_data_group,
-        mode  => '0644',
-      }
+  if defined(Class['os_patching']) {
+    notify { 'os_patching warning':
+      message => 'This node currently has the os_patching class applied. In order to use pe_patch, please remove os_patching from this node first. The pe_patch class will not be applied on this puppet run.',
     }
-    'windows': {
-      $fact_upload_cmd     = '"C:/Program Files/Puppet Labs/Puppet/bin/puppet.bat" facts upload'
-      $cache_dir           = 'C:/ProgramData/pe_patch'
-      $fact_dir            = $cache_dir
-      $fact_file           = 'pe_patch_fact_generation.ps1'
-      $fact_mode           = '0770'
+  } else {
+
+    include pe_patch::cleanup_os_patching
+
+    $fact_exec = $ensure ? {
+      'present' => 'pe_patch::exec::fact',
+      default   => undef,
     }
-    default: { fail translate(("Unsupported OS : ${facts['kernel']}")) }
-  }
 
-  # calculate full path for fact command/script
-  $fact_cmd = "${fact_dir}/${fact_file}"
-
-  $fact_upload_exec = $ensure ? {
-    'present' => 'pe_patch::exec::fact_upload',
-    default   => undef
-  }
-
-  $ensure_file = $ensure ? {
-    'present' => 'file',
-    default   => 'absent',
-  }
-
-  $ensure_dir = $ensure ? {
-    'present' => 'directory',
-    default   => 'absent',
-  }
-
-  if ($patch_group and $patch_group !~ /[A-Za-z0-9\-_ ]+/ ) {
-    fail translate(('The patch group can only contain alphanumerics, space, underscore and dash'))
-  }
-
-  file { $cache_dir:
-    ensure => $ensure_dir,
-    force  => true,
-  }
-
-  file { $fact_cmd:
-    ensure => $ensure_file,
-    mode   => $fact_mode,
-    source => "puppet:///modules/${module_name}/${fact_file}",
-    notify => Exec[$fact_exec],
-  }
-
-  $autoremove_ensure = $apt_autoremove ? {
-    true    => 'present',
-    default => 'absent'
-  }
-
-  $pre_patching_command_ensure = ($ensure == 'present' and $pre_patching_command ) ? {
-    true    => 'file',
-    default => 'absent'
-  }
-
-  $patch_group_ensure = ($ensure == 'present' and $patch_group ) ? {
-    true    => 'file',
-    default => 'absent'
-  }
-
-  $block_patching_ensure = ($ensure == 'present' and $block_patching_on_warnings ) ? {
-    true    => 'file',
-    default => 'absent'
-  }
-
-  file { "${cache_dir}/patch_group":
-    ensure  => $patch_group_ensure,
-    content => $patch_group,
-  }
-
-  file { "${cache_dir}/pre_patching_command":
-    ensure  => $pre_patching_command_ensure,
-    content => $pre_patching_command,
-  }
-
-  file { "${cache_dir}/block_patching_on_warnings":
-    ensure => $block_patching_ensure,
-    notify => Exec[$fact_exec],
-  }
-
-  $reboot_override_ensure = ($ensure == 'present' and $reboot_override) ? {
-    true    => 'file',
-    default => 'absent',
-  }
-
-  case $reboot_override {
-    true: { $reboot_override_value = 'always' }
-    false: { $reboot_override_value = 'never' }
-    default: { $reboot_override_value = $reboot_override }
-  }
-
-  file { "${cache_dir}/reboot_override":
-    ensure  => $reboot_override_ensure,
-    content => $reboot_override_value,
-  }
-
-  if ($blackout_windows) {
-    # Validate the information in the blackout_windows hash
-    $blackout_windows.each | String $key, Hash $value | {
-      if ( $key !~ /^[A-Za-z0-9\-_ ]+$/ ){
-        fail translate(('Blackout description can only contain alphanumerics, space, dash and underscore'))
-      }
-      if ( $value['start'] !~ /^\d{,4}-\d{1,2}-\d{1,2}T\d{,2}:\d{,2}:\d{,2}[-\+]\d{,2}:\d{,2}$/ ){
-        fail translate(('Blackout start time must be in ISO 8601 format (YYYY-MM-DDTmm:hh:ss[-+]hh:mm)'))
-      }
-      if ( $value['end'] !~ /^\d{,4}-\d{1,2}-\d{1,2}T\d{,2}:\d{,2}:\d{,2}[-\+]\d{,2}:\d{,2}$/ ){
-        fail translate(('Blackout end time must be in ISO 8601 format  (YYYY-MM-DDTmm:hh:ss[-+]hh:mm)'))
-      }
-      if ( $value['start'] > $value['end'] ){
-        fail translate(('Blackout end time must after the start time'))
-      }
-    }
-  }
-
-  $blackout_windows_ensure = ($ensure == 'present' and $blackout_windows) ? {
-    true    => 'file',
-    default => 'absent'
-  }
-
-  file { "${cache_dir}/blackout_windows":
-    ensure  => $blackout_windows_ensure,
-    content => epp("${module_name}/blackout_windows.epp", {
-      'blackout_windows' => pe_patch_pick($blackout_windows, {}),
-    }),
-    require => File[$cache_dir],
-  }
-
-  if $fact_upload_exec and $fact_upload {
-    exec { $fact_upload_exec:
-      command     => $fact_upload_cmd,
-      path        => ['/usr/bin','/bin','/sbin','/usr/local/bin'],
-      refreshonly => true,
-      subscribe   => File[
-        $fact_cmd,
-        $cache_dir,
-        "${cache_dir}/patch_group",
-        "${cache_dir}/reboot_override",
-        "${cache_dir}/blackout_windows",
-      ],
-    }
-  }
-
-  case $::kernel {
-    'Linux': {
-
-      if ( $::osfamily == 'RedHat' and $manage_yum_utils) {
-        package { 'yum-utils':
-          ensure => $yum_utils,
+    case $::kernel {
+      'Linux': {
+        $fact_upload_cmd     = '/opt/puppetlabs/bin/puppet facts upload'
+        $cache_dir           = '/var/cache/pe_patch'
+        $fact_dir            = '/usr/local/bin'
+        $fact_file           = 'pe_patch_fact_generation.sh'
+        $fact_mode           = '0700'
+        File {
+          owner => $patch_data_owner,
+          group => $patch_data_group,
+          mode  => '0644',
         }
       }
+      'windows': {
+        $fact_upload_cmd     = '"C:/Program Files/Puppet Labs/Puppet/bin/puppet.bat" facts upload'
+        $cache_dir           = 'C:/ProgramData/pe_patch'
+        $fact_dir            = $cache_dir
+        $fact_file           = 'pe_patch_fact_generation.ps1'
+        $fact_mode           = '0770'
+      }
+      default: { fail translate(("Unsupported OS : ${facts['kernel']}")) }
+    }
 
-      if ( $::osfamily == 'RedHat' and $manage_delta_rpm) {
-        package { 'deltarpm':
-          ensure => $delta_rpm,
+    # calculate full path for fact command/script
+    $fact_cmd = "${fact_dir}/${fact_file}"
+
+    $fact_upload_exec = $ensure ? {
+      'present' => 'pe_patch::exec::fact_upload',
+      default   => undef
+    }
+
+    $ensure_file = $ensure ? {
+      'present' => 'file',
+      default   => 'absent',
+    }
+
+    $ensure_dir = $ensure ? {
+      'present' => 'directory',
+      default   => 'absent',
+    }
+
+    if ($patch_group and $patch_group !~ /[A-Za-z0-9\-_ ]+/ ) {
+      fail translate(('The patch group can only contain alphanumerics, space, underscore and dash'))
+    }
+
+    file { $cache_dir:
+      ensure => $ensure_dir,
+      force  => true,
+    }
+
+    file { $fact_cmd:
+      ensure => $ensure_file,
+      mode   => $fact_mode,
+      source => "puppet:///modules/${module_name}/${fact_file}",
+      notify => Exec[$fact_exec],
+    }
+
+    $autoremove_ensure = $apt_autoremove ? {
+      true    => 'present',
+      default => 'absent'
+    }
+
+    $pre_patching_command_ensure = ($ensure == 'present' and $pre_patching_command ) ? {
+      true    => 'file',
+      default => 'absent'
+    }
+
+    $patch_group_ensure = ($ensure == 'present' and $patch_group ) ? {
+      true    => 'file',
+      default => 'absent'
+    }
+
+    $block_patching_ensure = ($ensure == 'present' and $block_patching_on_warnings ) ? {
+      true    => 'file',
+      default => 'absent'
+    }
+
+    file { "${cache_dir}/patch_group":
+      ensure  => $patch_group_ensure,
+      content => $patch_group,
+    }
+
+    file { "${cache_dir}/pre_patching_command":
+      ensure  => $pre_patching_command_ensure,
+      content => $pre_patching_command,
+    }
+
+    file { "${cache_dir}/block_patching_on_warnings":
+      ensure => $block_patching_ensure,
+      notify => Exec[$fact_exec],
+    }
+
+    $reboot_override_ensure = ($ensure == 'present' and $reboot_override) ? {
+      true    => 'file',
+      default => 'absent',
+    }
+
+    case $reboot_override {
+      true: { $reboot_override_value = 'always' }
+      false: { $reboot_override_value = 'never' }
+      default: { $reboot_override_value = $reboot_override }
+    }
+
+    file { "${cache_dir}/reboot_override":
+      ensure  => $reboot_override_ensure,
+      content => $reboot_override_value,
+    }
+
+    if ($blackout_windows) {
+      # Validate the information in the blackout_windows hash
+      $blackout_windows.each | String $key, Hash $value | {
+        if ( $key !~ /^[A-Za-z0-9\-_ ]+$/ ){
+          fail translate(('Blackout description can only contain alphanumerics, space, dash and underscore'))
+        }
+        if ( $value['start'] !~ /^\d{,4}-\d{1,2}-\d{1,2}T\d{,2}:\d{,2}:\d{,2}[-\+]\d{,2}:\d{,2}$/ ){
+          fail translate(('Blackout start time must be in ISO 8601 format (YYYY-MM-DDTmm:hh:ss[-+]hh:mm)'))
+        }
+        if ( $value['end'] !~ /^\d{,4}-\d{1,2}-\d{1,2}T\d{,2}:\d{,2}:\d{,2}[-\+]\d{,2}:\d{,2}$/ ){
+          fail translate(('Blackout end time must be in ISO 8601 format  (YYYY-MM-DDTmm:hh:ss[-+]hh:mm)'))
+        }
+        if ( $value['start'] > $value['end'] ){
+          fail translate(('Blackout end time must after the start time'))
         }
       }
+    }
 
-      if ( $::osfamily == 'RedHat' and $manage_yum_plugin_security) {
-        package { 'yum-plugin-security':
-          ensure => $yum_plugin_security,
+    $blackout_windows_ensure = ($ensure == 'present' and $blackout_windows) ? {
+      true    => 'file',
+      default => 'absent'
+    }
+
+    file { "${cache_dir}/blackout_windows":
+      ensure  => $blackout_windows_ensure,
+      content => epp("${module_name}/blackout_windows.epp", {
+        'blackout_windows' => pe_patch_pick($blackout_windows, {}),
+      }),
+      require => File[$cache_dir],
+    }
+
+    if $fact_upload_exec and $fact_upload {
+      exec { $fact_upload_exec:
+        command     => $fact_upload_cmd,
+        path        => ['/usr/bin','/bin','/sbin','/usr/local/bin'],
+        refreshonly => true,
+        subscribe   => File[
+          $fact_cmd,
+          $cache_dir,
+          "${cache_dir}/patch_group",
+          "${cache_dir}/reboot_override",
+          "${cache_dir}/blackout_windows",
+        ],
+      }
+    }
+
+    case $::kernel {
+      'Linux': {
+
+        if ( $::osfamily == 'RedHat' and $manage_yum_utils) {
+          package { 'yum-utils':
+            ensure => $yum_utils,
+          }
         }
-      }
 
-      if $fact_exec {
-        exec { $fact_exec:
-          command     => $fact_cmd,
-          user        => $patch_data_owner,
-          group       => $patch_data_group,
-          refreshonly => true,
-          require     => [
-            File[$fact_cmd],
-            File["${cache_dir}/reboot_override"]
-          ],
+        if ( $::osfamily == 'RedHat' and $manage_delta_rpm) {
+          package { 'deltarpm':
+            ensure => $delta_rpm,
+          }
         }
-      }
 
-      cron { 'Cache patching data':
-        ensure   => $ensure,
-        command  => $fact_cmd,
-        user     => $patch_cron_user,
-        hour     => $patch_cron_hour,
-        minute   => $patch_cron_min,
-        month    => $patch_cron_month,
-        monthday => $patch_cron_monthday,
-        weekday  => $patch_cron_weekday,
-        require  => File[$fact_cmd],
-      }
+        if ( $::osfamily == 'RedHat' and $manage_yum_plugin_security) {
+          package { 'yum-plugin-security':
+            ensure => $yum_plugin_security,
+          }
+        }
 
-      cron { 'Cache patching data at reboot':
-        ensure  => $ensure,
-        command => $fact_cmd,
-        user    => $patch_cron_user,
-        special => 'reboot',
-        require => File[$fact_cmd],
-      }
+        if $fact_exec {
+          exec { $fact_exec:
+            command     => $fact_cmd,
+            user        => $patch_data_owner,
+            group       => $patch_data_group,
+            refreshonly => true,
+            require     => [
+              File[$fact_cmd],
+              File["${cache_dir}/reboot_override"]
+            ],
+          }
+        }
 
-      if $facts['os']['family'] == 'Debian' {
-        cron { 'Run apt autoremove on reboot':
-          ensure  => $autoremove_ensure,
-          command => 'apt-get -y autoremove',
+        cron { 'pe_patch - Cache patching data':
+          ensure   => $ensure,
+          command  => $fact_cmd,
+          user     => $patch_cron_user,
+          hour     => $patch_cron_hour,
+          minute   => $patch_cron_min,
+          month    => $patch_cron_month,
+          monthday => $patch_cron_monthday,
+          weekday  => $patch_cron_weekday,
+          require  => File[$fact_cmd],
+        }
+
+        cron { 'pe_patch - Cache patching data at reboot':
+          ensure  => $ensure,
+          command => $fact_cmd,
           user    => $patch_cron_user,
           special => 'reboot',
+          require => File[$fact_cmd],
         }
-      }
-    }
-    'windows': {
 
-      if $fact_exec {
-        exec { $fact_exec:
-          path        => 'C:/Windows/System32/WindowsPowerShell/v1.0',
-          refreshonly => true,
-          command     => "powershell -executionpolicy remotesigned -file ${fact_cmd}",
-        }
-      }
-
-      scheduled_task { 'pe_patch fact generation':
-        ensure    => $ensure,
-        enabled   => true,
-        command   => "${::system32}/WindowsPowerShell/v1.0/powershell.exe",
-        arguments => "-NonInteractive -ExecutionPolicy RemoteSigned -File ${fact_cmd}",
-        user      => 'SYSTEM',
-        trigger   => [
-          {
-            schedule         => daily,
-            start_time       => "01:${patch_cron_min}",
-            minutes_interval => '720',
-          },
-          {
-            schedule => 'boot',
+        if $facts['os']['family'] == 'Debian' {
+          cron { 'pe_patch - Run apt autoremove on reboot':
+            ensure  => $autoremove_ensure,
+            command => 'apt-get -y autoremove',
+            user    => $patch_cron_user,
+            special => 'reboot',
           }
-        ],
-        require   => File[$fact_cmd],
+        }
       }
+      'windows': {
+
+        if $fact_exec {
+          exec { $fact_exec:
+            path        => 'C:/Windows/System32/WindowsPowerShell/v1.0',
+            refreshonly => true,
+            command     => "powershell -executionpolicy remotesigned -file ${fact_cmd}",
+          }
+        }
+
+        scheduled_task { 'pe_patch fact generation':
+          ensure    => $ensure,
+          enabled   => true,
+          command   => "${::system32}/WindowsPowerShell/v1.0/powershell.exe",
+          arguments => "-NonInteractive -ExecutionPolicy RemoteSigned -File ${fact_cmd}",
+          user      => 'SYSTEM',
+          trigger   => [
+            {
+              schedule         => daily,
+              start_time       => "01:${patch_cron_min}",
+              minutes_interval => '720',
+            },
+            {
+              schedule => 'boot',
+            }
+          ],
+          require   => File[$fact_cmd],
+        }
+      }
+      default: { fail translate(('Unsupported OS'))}
     }
-    default: { fail translate(('Unsupported OS'))}
   }
 }

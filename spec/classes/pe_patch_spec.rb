@@ -14,6 +14,21 @@ describe 'pe_patch' do
         let(:fact_cmd) { 'C:/ProgramData/pe_patch/pe_patch_fact_generation.ps1' }
       end
 
+      context 'when os_patching is applied' do
+        let(:pre_condition) do
+          <<~EOT
+          class os_patching {}
+          include os_patching
+          EOT
+        end
+        it { is_expected.to contain_notify('os_patching warning') }
+        it { is_expected.not_to contain_file(cache_dir) }
+      end
+
+      context 'when os_patching is not applied' do
+        it { is_expected.to contain_class('pe_patch::cleanup_os_patching') }
+      end
+
       case os_facts[:osfamily]
       when 'RedHat'
         context 'with package management enabled' do
@@ -39,10 +54,10 @@ describe 'pe_patch' do
       when 'Debian'
         context 'with apt_autoremove => true' do
           let(:params) { {'apt_autoremove' => true } }
-          it { is_expected.to contain_cron('Run apt autoremove on reboot').with_ensure('present') }
+          it { is_expected.to contain_cron('pe_patch - Run apt autoremove on reboot').with_ensure('present') }
         end
         context 'with apt_autoremove => default' do
-          it { is_expected.to contain_cron('Run apt autoremove on reboot').with_ensure('absent') }
+          it { is_expected.to contain_cron('pe_patch - Run apt autoremove on reboot').with_ensure('absent') }
         end
       end
 
@@ -154,11 +169,13 @@ describe 'pe_patch' do
 
       case os_facts[:kernel]
       when 'Linux'
-        it { is_expected.to contain_cron('Cache patching data').with_ensure('present') }
-        it { is_expected.to contain_cron('Cache patching data at reboot').with_ensure('present') }
+        it { is_expected.to contain_cron('pe_patch - Cache patching data').with_ensure('present') }
+        it { is_expected.to contain_cron('pe_patch - Cache patching data at reboot').with_ensure('present') }
         it { is_expected.to contain_exec('pe_patch::exec::fact').that_requires(
           'File[' + cache_dir + '/reboot_override]',
         )}
+      when 'windows'
+        it { is_expected.to contain_scheduled_task('pe_patch fact generation').with_ensure('present') }
       end
       it { is_expected.to contain_exec('pe_patch::exec::fact') }
       it { is_expected.to contain_exec('pe_patch::exec::fact_upload') }
@@ -172,7 +189,7 @@ describe 'pe_patch' do
         let(:params) { { 'apt_autoremove' => true } }
         case os_facts[:osfamily]
         when 'Debian'
-          it { is_expected.to contain_cron('Run apt autoremove on reboot').with_ensure('present') }
+          it { is_expected.to contain_cron('pe_patch - Run apt autoremove on reboot').with_ensure('present') }
         end
       end
 

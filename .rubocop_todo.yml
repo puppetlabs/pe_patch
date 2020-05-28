@@ -106,6 +106,7 @@ Style/FrozenStringLiteralComment:
     - 'lib/facter/pe_patch.rb'
     - 'spec/acceptance/pe_patch_spec.rb'
     - 'spec/classes/pe_patch_spec.rb'
+    - 'spec/classes/cleanup_os_patching_spec.rb'
     - 'spec/spec_helper.rb'
     - 'tasks/clean_cache.rb'
     - 'tasks/patch_server.rb'
