@@ -177,7 +177,7 @@ describe 'pe_patch' do
       when 'windows'
         it { is_expected.to contain_scheduled_task('pe_patch fact generation').with_ensure('present') }
       end
-      it { is_expected.to contain_exec('pe_patch::exec::fact') }
+      it { is_expected.to contain_exec('pe_patch::exec::fact').with_timeout(900) }
       it { is_expected.to contain_exec('pe_patch::exec::fact_upload') }
 
       context 'block on warnings' do

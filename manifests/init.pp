@@ -28,6 +28,11 @@
 # @param apt_autoremove [Boolean]
 #   Should `apt-get autoremove` be run during reboot?
 #
+# @param initial_fact_timeout [Integer]
+#   How long in seconds to allow the command that collects patch information to run before
+#   timing out.  This only affects the initial run, not the cron/scheduled job.
+#   Timeout can be disabled by setting a value of 0.
+#
 # @param manage_delta_rpm [Boolean]
 #   Should the deltarpm package be managed by this module on RedHat family nodes?
 #   If `true`, use the parameter `delta_rpm` to determine how it should be manged
@@ -133,6 +138,7 @@ class pe_patch (
   Boolean $fact_upload                = true,
   Boolean $block_patching_on_warnings = false,
   Boolean $apt_autoremove             = false,
+  Integer $initial_fact_timeout       = 900,
   Enum['installed', 'absent', 'purged', 'held', 'latest'] $yum_utils = 'installed',
   Enum['installed', 'absent', 'purged', 'held', 'latest'] $delta_rpm = 'installed',
   Enum['installed', 'absent', 'purged', 'held', 'latest'] $yum_plugin_security = 'installed',
@@ -346,6 +352,7 @@ class pe_patch (
               File[$fact_cmd],
               File["${cache_dir}/reboot_override"]
             ],
+            timeout     => $initial_fact_timeout,
           }
         }
 
@@ -385,6 +392,7 @@ class pe_patch (
             path        => 'C:/Windows/System32/WindowsPowerShell/v1.0',
             refreshonly => true,
             command     => "powershell -executionpolicy remotesigned -file ${fact_cmd}",
+            timeout     => $initial_fact_timeout,
           }
         }
 
