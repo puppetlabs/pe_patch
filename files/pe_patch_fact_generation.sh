@@ -54,11 +54,11 @@ SECUPDATEFILE="$DATADIR/security_package_updates"
 OSHELDPKGFILE="$DATADIR/os_version_locked_packages"
 CATHELDPKGFILE="$DATADIR/catalog_version_locked_packages"
 MISMATCHHELDPKGFILE="$DATADIR/mismatched_version_locked_packages"
-CATALOG="$(facter -p puppet_vardir)/client_data/catalog/$(puppet config print certname --section agent).json"
+CATALOG="$(puppet config print vardir)/client_data/catalog/$(puppet config print certname --section agent).json"
 
 if [ -f "${CATALOG}" ]
 then
-	VERSION_LOCK_FROM_CATALOG=$(cat $CATALOG | /opt/puppetlabs/puppet/bin/ruby -e "require 'json'; json_hash = JSON.parse(ARGF.read); json_hash['resources'].select { |r| r['type'] == 'Package' and r['parameters']['ensure'].match /\d.+/ }.each do | m | puts m['title'] end")
+	VERSION_LOCK_FROM_CATALOG=$(cat $CATALOG | /opt/puppetlabs/puppet/bin/ruby -e "require 'json'; begin; json_hash = JSON.parse(ARGF.read); json_hash['resources'].select { |r| r['type'] == 'Package' and r['parameters'] and r['parameters']['ensure'] and r['parameters']['ensure'].match /\d.+/ }.each do | m | puts m['title'] end; rescue; puts ''; end")
 else
 	VERSION_LOCK_FROM_CATALOG=''
 fi
