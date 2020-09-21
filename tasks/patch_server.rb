@@ -581,31 +581,48 @@ elsif facts['values']['os']['family'] == 'windows'
 
   if output_file != 'not applicable'
     # parse output file as json
-    output_data = JSON.parse(File.read(output_file))
+    output_string = File.read(output_file)
+    log.debug 'Results file'
+    log.debug output_string
+    output_data = JSON.parse(output_string)
 
     # delete output file as it's no longer needed
     File.delete(output_file)
 
-    # get update titles to return as result
-
-    if output_data.is_a?(Array)
-      # for multiple updates
-      update_titles = []
-      output_data.each do |item|
-        update_titles.push(item['Title'])
+    # Collect patches that passed vs. failed or ran into other issues applying
+    output_data = [output_data].flatten
+    passed = []
+    errored = []
+    output_data.each do |patch|
+      if patch['Status'] == 'Succeeded'
+        passed << patch['Title']
+      else
+        errored << { 'Title' => patch['Title'], 'Status' => patch['Status'], 'HResult' => patch['HResult'] }
       end
-    else
-      # for a single update... it happens!
-      update_titles = output_data['Title']
     end
 
+    if errored.empty?
+      # All patches applied successfully
+      output('Success', reboot, security_only, 'Patching complete', passed, win_std_out.split("\n"), '', '', starttime)
+    else
+      message = "Some patches failed to apply\n"
+      errored.each do |error|
+        hresult = if error['HResult'].nil? || !error['HResult'].is_a?(Integer)
+                    ''
+                  else
+                    '0x%X' % (error['HResult'] & 0xFFFFFFFF)
+                  end
+        message += "#{error['Title']}: Status=#{error['Status']}, HResult=#{hresult}\n"
+      end
+      unless passed.empty?
+        message += "The following patches were applied successfully:\n"
+        message += passed.join("\n")
+      end
+      err(1, 'pe_patch/failed_patch', message, starttime)
+    end
   else
-    update_titles = ''
+    output('Success', reboot, security_only, 'Patching complete', '', win_std_out.split("\n"), '', '', starttime)
   end
-
-  # output results
-  # def output(returncode, reboot, security, message, packages_updated, debug, job_id, pinned_packages, starttime)
-  output('Success', reboot, security_only, 'Patching complete', update_titles, win_std_out.split("\n"), '', '', starttime)
 
 elsif facts['values']['os']['family'] == 'Suse'
   zypper_required_params = '--non-interactive --no-abbrev --quiet'
