@@ -22,9 +22,8 @@ Metrics/LineLength:
   Description: People have wide screens, use them.
   Max: 200
 GetText/DecorateString:
-  Description: We don't want to decorate test output.
-  Exclude:
-  - spec/*
+  Description: Not using i18n currently.
+  Enabled: false
 RSpec/BeforeAfterAll:
   Description: Beware of using after(:all) as it may cause state to leak between tests.
     A necessary evil in acceptance testing.
@@ -64,13 +63,6 @@ Style/TernaryParentheses:
 Style/TrailingCommaInArguments:
   Description: Prefer always trailing comma on multiline argument lists. This makes
     diffs, and re-ordering nicer.
-  EnforcedStyleForMultiline: comma
-Style/TrailingCommaInArrayLiteral:
-  Description: Prefer always trailing comma on multiline literals. This makes diffs,
-    and re-ordering nicer.
-Style/TrailingCommaInHashLiteral:
-  Description: Prefer always trailing comma on multiline literals. This makes diffs,
-    and re-ordering nicer.
   EnforcedStyleForMultiline: comma
 Style/SymbolArray:
   Description: Using percent style obscures symbolic intent of array's contents.
