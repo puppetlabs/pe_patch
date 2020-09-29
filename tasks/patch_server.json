@@ -32,7 +32,7 @@
   },
   "implementations": [
     { "name": "patch_server.rb", "requirements": ["shell"]},
-    { "name": "patch_server.rb", "requirements": ["powershell"], "files": ["pe_patch/files/pe_patch_groups.ps1"]}
+    { "name": "patch_server.rb", "requirements": ["powershell"]}
   ],
   "puppet_task_version": 1,
   "supports_noop": false,
