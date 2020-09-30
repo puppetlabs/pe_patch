@@ -19,6 +19,7 @@ if IS_WINDOWS
   # set paths/commands for windows
   fact_generation_script = 'C:/ProgramData/pe_patch/pe_patch_fact_generation.ps1'
   fact_generation_cmd = "#{ENV['systemroot']}/system32/WindowsPowerShell/v1.0/powershell.exe -ExecutionPolicy RemoteSigned -file #{fact_generation_script}"
+  patch_script = 'C:/ProgramData/pe_patch/pe_patch_groups.ps1'
   puppet_cmd = "#{ENV['programfiles']}/Puppet Labs/Puppet/bin/puppet"
   shutdown_cmd = 'shutdown /r /t 60 /c "Rebooting due to the installation of updates by pe_patch" /d p:2:17'
 else
@@ -560,7 +561,7 @@ elsif facts['values']['os']['family'] == 'windows'
 
   # build patching command
   powershell_cmd = "#{ENV['systemroot']}/system32/WindowsPowerShell/v1.0/powershell.exe -NonInteractive -ExecutionPolicy RemoteSigned -File"
-  win_patching_cmd = "#{powershell_cmd} #{params['_installdir']}/pe_patch/files/pe_patch_groups.ps1 #{security_arg} -Timeout #{timeout}"
+  win_patching_cmd = "#{powershell_cmd} #{patch_script} #{security_arg} -Timeout #{timeout}"
 
   log.info 'Running patching powershell script'
 

@@ -33,7 +33,7 @@ Force running in scheduled task mode. This indended for use in a remote session,
 Switch, when set the script will only install updates with a category that includes Security Update.
 
 .PARAMETER UpdateCriteria
-Criteria used for update detection. This ultimately drives which updates will be installed. The detault is "IsInstalled=0 and IsHidden=0" which should be suitable in most cases, and relies on your upstream update approvals. Note that this is not validated, if the syntax is not validated the script will fail. See MSDN doco for valid syntax - https://docs.microsoft.com/en-us/windows/desktop/api/wuapi/nf-wuapi-iupdatesearcher-search.
+Criteria used for update detection. This ultimately drives which updates will be installed. The default for this script is determined by pe_patch::windows_update_criteria, and is "IsInstalled=0 and IsHidden=0 and Type='Software'" unless otherwise specified, which should be suitable in most cases, and relies on your upstream update approvals. Note that this is not validated, if the syntax is not validated the script will fail. See MSDN docs for valid syntax - https://docs.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iupdatesearcher-search
 
 .PARAMETER MaxUpdates
 Install only the first X numbmer of updates (at most). Useful ror testing.
@@ -81,7 +81,7 @@ param(
     # update criteria
     [Parameter(ParameterSetName = "InstallUpdates-Forcelocal")]
     [Parameter(ParameterSetName = "InstallUpdates-ForceSchedTask")]
-    [String]$UpdateCriteria = "IsInstalled=0 and IsHidden=0",
+    [String]$UpdateCriteria = "<%= $windows_update_criteria %>",
 
     [Parameter(ParameterSetName = "InstallUpdates-Forcelocal")]
     [Parameter(ParameterSetName = "InstallUpdates-ForceSchedTask")]

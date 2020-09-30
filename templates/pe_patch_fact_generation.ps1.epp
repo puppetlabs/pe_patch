@@ -24,12 +24,12 @@ Performs an update scan, and refreshes update related facts, for the puppet modu
 Performs an update scan, and refreshes update related facts, for the puppet module pe_patch. This script is intended to be run as part of the pe_patch module, however it will also function standalone.
 
 .PARAMETER UpdateCriteria
-Criteria used for update detection. This ultimately drives which updates will be installed. The detault is "IsInstalled=0 and IsHidden=0" which should be suitable in most cases, and relies on your upstream update approvals. Note that this is not validated, if the syntax is not validated the script will fail. See MSDN doco for valid syntax - https://docs.microsoft.com/en-us/windows/desktop/api/wuapi/nf-wuapi-iupdatesearcher-search.
+Criteria used for update detection. This ultimately drives which updates will be installed. The default for this script is determined by pe_patch::windows_update_criteria, and is "IsInstalled=0 and IsHidden=0 and Type='Software'" unless otherwise specified, which should be suitable in most cases, and relies on your upstream update approvals. Note that this is not validated, if the syntax is not validated the script will fail. See MSDN doco for valid syntax - https://docs.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iupdatesearcher-search
 #>
 
 [CmdletBinding()]
 param(
-    [String]$UpdateCriteria = "IsInstalled=0 and IsHidden=0",
+    [String]$UpdateCriteria = "<%= $windows_update_criteria %>",
 
     # path to lock file
     # default to same one as pe_patch_groups so this won't run at the same time

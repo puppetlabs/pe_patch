@@ -132,6 +132,7 @@ class pe_patch (
   String $patch_data_owner            = 'root',
   String $patch_data_group            = 'root',
   String $patch_cron_user             = $patch_data_owner,
+  String $windows_update_criteria     = "IsInstalled=0 and IsHidden=0 and Type='Software'",
   Boolean $manage_yum_utils           = false,
   Boolean $manage_delta_rpm           = false,
   Boolean $manage_yum_plugin_security = false,
@@ -186,6 +187,7 @@ class pe_patch (
         $fact_dir            = $cache_dir
         $fact_file           = 'pe_patch_fact_generation.ps1'
         $fact_mode           = '0770'
+        $patch_file          = 'pe_patch_groups.ps1'
       }
       default: { fail("Unsupported OS : ${facts['kernel']}") }
     }
@@ -217,11 +219,30 @@ class pe_patch (
       force  => true,
     }
 
-    file { $fact_cmd:
-      ensure => $ensure_file,
-      mode   => $fact_mode,
-      source => "puppet:///modules/${module_name}/${fact_file}",
-      notify => Exec[$fact_exec],
+    case $::kernel {
+      'Linux': {
+        file { $fact_cmd:
+          ensure => $ensure_file,
+          mode   => $fact_mode,
+          source => "puppet:///modules/${module_name}/${fact_file}",
+          notify => Exec[$fact_exec],
+        }
+      }
+      'windows': {
+        file { $fact_cmd:
+          ensure  => $ensure_file,
+          mode    => $fact_mode,
+          content => epp("${module_name}/${fact_file}.epp", {'windows_update_criteria' => $windows_update_criteria}),
+          notify  => Exec[$fact_exec],
+        }
+
+        file { "${fact_dir}/${patch_file}":
+          ensure  => $ensure_file,
+          mode    => $fact_mode,
+          content => epp("${module_name}/${patch_file}.epp", {'windows_update_criteria' => $windows_update_criteria}),
+        }
+      }
+      default: { fail("Unsupported OS : ${facts['kernel']}") }
     }
 
     $autoremove_ensure = $apt_autoremove ? {
