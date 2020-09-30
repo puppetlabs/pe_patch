@@ -402,7 +402,7 @@ if blocker.to_s.chomp == 'true'
   # need to error as it SHOULDN'T ever happen if you
   # use the right workflow through tasks.
   log.error 'Patching blocked, not continuing'
-  block_reason = facts['values']['pe_patch']['blocker_reasons']
+  block_reason = facts['values']['pe_patch']['blocked_reasons']
   err(100, 'pe_patch/blocked', "Patching blocked #{block_reason}", starttime)
 end
 
