@@ -220,12 +220,15 @@ class pe_patch (
     }
 
     case $::kernel {
+      # Because this module resides in the base modulepath, we can not
+      # serve the file statically with 'source', so we use 'content'
+      # to avoid excessive file metadata checks at scale.
       'Linux': {
         file { $fact_cmd:
-          ensure => $ensure_file,
-          mode   => $fact_mode,
-          source => "puppet:///modules/${module_name}/${fact_file}",
-          notify => Exec[$fact_exec],
+          ensure  => $ensure_file,
+          mode    => $fact_mode,
+          content => file("${module_name}/${fact_file}"),
+          notify  => Exec[$fact_exec],
         }
       }
       'windows': {
