@@ -279,6 +279,15 @@ function Invoke-RefreshPuppetFacts {
     $secUpdateFile = Join-Path -Path $dataDir -ChildPath 'security_package_updates'
     $rebootReqdFile = Join-Path -Path $dataDir -ChildPath  'reboot_required'
 
+    # backup previous package_updates file if it exists
+    if (Test-Path $updateFile) {
+        Move-Item -Path $updateFile -Destination "$updateFile.previous" -Force
+    }
+    else {
+        # Have to have something or Get-Content returns null
+        echo " " | Out-File -FilePath "$updateFile.previous"
+    }
+
     # create pe_patch data dir if required
     if (-not (Test-Path $dataDir)) { [void](New-Item $dataDir -ItemType Directory) }
 
@@ -294,10 +303,18 @@ function Invoke-RefreshPuppetFacts {
     # get pending reboot details
     Get-PendingReboot | Out-File $rebootReqdFile -Encoding ascii
 
-    # upload facts
-    Add-LogEntry "Uploading puppet facts"
-    $puppetCmd = Join-Path $env:ProgramFiles -ChildPath "Puppet Labs\Puppet\bin\puppet.bat"
-    & $puppetCmd facts upload --color=false
+    # upload facts if new package_updates is different than the old one
+    $updateFileContents = (Get-Content $updateFile)
+    if ($updateFileContents -eq $null) { $updateFileContents = " " }
+    $updateFilePreviousContents = (Get-Content "$updateFile.previous")
+    if ($updateFilePreviousContents -eq $null) { $updateFilePreviousContents = " " }
+    Remove-Item -Path "$updateFile.previous"
+    $diff = (Compare-Object $updateFileContents $updateFilePreviousContents)
+    if ($diff) {
+        Add-LogEntry "Uploading puppet facts"
+        $puppetCmd = Join-Path $env:ProgramFiles -ChildPath "Puppet Labs\Puppet\bin\puppet.bat"
+        & $puppetCmd facts upload --environment="<%= $environment %>" --color=false
+    }
 }
 
 function Get-UpdateSearch {
