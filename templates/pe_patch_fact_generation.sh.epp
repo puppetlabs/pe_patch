@@ -71,6 +71,12 @@ then
   exit 1
 fi
 
+if [ -f "${UPDATEFILE}" ]
+then
+  mv -f "${UPDATEFILE}" "${UPDATEFILE}.previous"
+else
+  touch "${UPDATEFILE}.previous"
+fi
 cat /dev/null > ${UPDATEFILE}
 for UPDATE in $PKGS
 do
@@ -145,8 +151,14 @@ then
   touch $DATADIR/apps_to_restart
 fi
 
-puppet facts upload 2>/dev/null 1>/dev/null
-logger -p info -t pe_patch_fact_generation.sh "patch data fact refreshed"
+diff=$(diff -y --suppress-common "${UPDATEFILE}" "${UPDATEFILE}.previous" | wc -l)
+rm -f "${UPDATEFILE}.previous"
+if [ "${diff}" != "0" ]
+then
+  echo "Uploading facts"
+  puppet facts upload --environment "<%= $environment %>" 2>/dev/null 1>/dev/null
+fi
+logger -p info -t pe_patch_fact_generation.sh "patch data refreshed"
 
 rm $LOCKFILE
 exit 0

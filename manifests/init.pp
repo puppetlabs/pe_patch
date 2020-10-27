@@ -222,17 +222,17 @@ class pe_patch (
     case $::kernel {
       'Linux': {
         file { $fact_cmd:
-          ensure => $ensure_file,
-          mode   => $fact_mode,
-          source => "puppet:///modules/${module_name}/${fact_file}",
-          notify => Exec[$fact_exec],
+          ensure  => $ensure_file,
+          mode    => $fact_mode,
+          content => epp("${module_name}/${fact_file}.epp", {'environment' => $environment}),
+          notify  => Exec[$fact_exec],
         }
       }
       'windows': {
         file { $fact_cmd:
           ensure  => $ensure_file,
           mode    => $fact_mode,
-          content => epp("${module_name}/${fact_file}.epp", {'windows_update_criteria' => $windows_update_criteria}),
+          content => epp("${module_name}/${fact_file}.epp", {'windows_update_criteria' => $windows_update_criteria, 'environment' => $environment}),
           notify  => Exec[$fact_exec],
         }
 
