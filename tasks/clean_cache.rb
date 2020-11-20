@@ -57,7 +57,7 @@ end
 
 # Cache the facts
 log.debug 'Gathering facts'
-full_facts, stderr, status = Open3.capture3('/opt/puppetlabs/puppet/bin/puppet', 'facts')
+full_facts, stderr, status = Open3.capture3('/opt/puppetlabs/puppet/bin/puppet', 'facts', 'find')
 err(status, 'pe_patch/facter', stderr, starttime) if status != 0
 facts = JSON.parse(full_facts)
 
