@@ -129,6 +129,7 @@
 #     ensure => absent,
 #   }
 class pe_patch (
+  String $linux_fact_dir              = '/usr/local/bin',
   String $patch_data_owner            = 'root',
   String $patch_data_group            = 'root',
   String $patch_cron_user             = $patch_data_owner,
@@ -172,7 +173,7 @@ class pe_patch (
       'Linux': {
         $fact_upload_cmd     = '/opt/puppetlabs/bin/puppet facts upload'
         $cache_dir           = '/var/cache/pe_patch'
-        $fact_dir            = '/usr/local/bin'
+        $fact_dir            = $linux_fact_dir
         $fact_file           = 'pe_patch_fact_generation.sh'
         $fact_mode           = '0700'
         File {
