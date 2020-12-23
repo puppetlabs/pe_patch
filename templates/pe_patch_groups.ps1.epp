@@ -715,8 +715,14 @@ $scriptBlock = {
             #
             if ($null -ne $Params.endtime) {
                 if ([datetime]::now -gt $Params.endtime.AddMinutes(-5)) {
-                    Add-LogEntry "Skipping remaining updates due to insufficient time"
-                    Break
+                    $updateInstallResults += [pscustomobject]@{
+                        Title          = $update.Title
+                        Status         = "SkippedDueToTimeout"
+                        HResult        = $null
+                        RebootRequired = $false
+                    }
+                    Add-LogEntry "Skipping update $($update.Title) due to insufficient time"
+                    Continue
                 }
             }
 

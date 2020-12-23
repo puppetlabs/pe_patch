@@ -1,8 +1,8 @@
 ---
 require:
-- rubocop-i18n
 - rubocop-rspec
 AllCops:
+  NewCops: enable
   DisplayCopNames: true
   TargetRubyVersion: '2.4'
   Include:
@@ -18,12 +18,9 @@ AllCops:
   - "**/Puppetfile"
   - "**/Vagrantfile"
   - "**/Guardfile"
-Metrics/LineLength:
+Layout/LineLength:
   Description: People have wide screens, use them.
   Max: 200
-GetText/DecorateString:
-  Description: Not using i18n currently.
-  Enabled: false
 RSpec/BeforeAfterAll:
   Description: Beware of using after(:all) as it may cause state to leak between tests.
     A necessary evil in acceptance testing.
@@ -67,7 +64,6 @@ Style/TrailingCommaInArguments:
 Style/SymbolArray:
   Description: Using percent style obscures symbolic intent of array's contents.
   EnforcedStyle: brackets
-inherit_from: ".rubocop_todo.yml"
 RSpec/MessageSpies:
   EnforcedStyle: receive
 Style/Documentation:
@@ -84,7 +80,7 @@ Style/StringMethods:
   Enabled: true
 Layout/EndOfLine:
   Enabled: false
-Layout/IndentHeredoc:
+Layout/HeredocIndentation:
   Enabled: false
 Metrics/AbcSize:
   Enabled: false
