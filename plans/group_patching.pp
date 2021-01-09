@@ -28,6 +28,7 @@ plan pe_patch::group_patching (
     $not_patched        = []
     $check_failed       = []
     $check_passed       = []
+    $reboot_timed_out   = []
   } else {
     # Check the health of the puppet agent on all nodes
     # Ensures puppet configuration is as expected, agent hasn't been disabled with puppet agent --disable,
@@ -69,7 +70,13 @@ plan pe_patch::group_patching (
       $not_patched        = []
       $check_failed       = []
       $check_passed       = []
+      $reboot_timed_out   = []
     } else {
+      # So we can detect when a node has rebooted
+      $begin_boot_time_results = without_default_logging() || {
+        run_task('pe_patch::last_boot_time', $node_healthy)
+      }
+
       # Actually carry out the patching on all healthy nodes
       $to_patch = run_task('pe_patch::patch_server',
                             $node_healthy,
@@ -85,27 +92,73 @@ plan pe_patch::group_patching (
 
       if $run_health_check {
         # Wait until the nodes are back up
-        # It takes a minute for the reboot to actually start, so wait a bit
-        # unless reboot == never. This is imperfect, as it may actually
-        # be installing updates as it's restarting and remain responsive
-        # to wait_until_available. In the future, we should make the patch_server
-        # task handle waiting for the node to reboot, or use the puppetlabs/reboot
-        # module.
         if $rebooting.empty {
           $to_post_puppet_check = $patched
+          $reboot_timed_out = []
         } else {
-          #sleep(30)
-          $reboot_check = wait_until_available($rebooting, wait_time => $reboot_wait_time)
-          $to_post_puppet_check = $reboot_check.ok_set.names
-          $not_rebooted = $reboot_check.error_set.names # Not using this currently
+          # Adapted from puppetlabs-reboot
+          $start_time = Timestamp()
+          $wait_results = without_default_logging() || {
+            $reboot_wait_time.reduce({'pending' => $rebooting, 'ok' => []}) |$memo, $_| {
+              if ($memo['pending'].empty() or $memo['timed_out']) {
+                break()
+              }
+
+              out::message("Waiting for ${$memo['pending'].size()} node(s) to reboot. Note that a failed pe_patch::last_boot_time task is normal while a target is in the middle of rebooting, and may be safely ignored.")
+              $current_boot_time_results = run_task('pe_patch::last_boot_time', $memo['pending'], _catch_errors => true)
+
+              $failed_results = $current_boot_time_results.filter |$current_boot_time_res| {
+                # If we errored, need to check again, since it's probably still rebooting
+                if !$current_boot_time_res.ok() {
+                  true
+                } else {
+                  # If the boot time is the same as it was before we patched,
+                  # we haven't rebooted yet and need to check again.
+                  $target_name = $current_boot_time_res.target().name()
+                  $begin_boot_time_res = $begin_boot_time_results.find($target_name)
+                  $current_boot_time_res.value() == $begin_boot_time_res.value()
+                }
+              }
+
+              # Turn array of results into ResultSet to we can extract Targets
+              $failed_targets = ResultSet($failed_results).targets()
+              $ok_targets = $memo['pending'] - $failed_targets
+
+              $elapsed_time_sec = Integer(Timestamp() - $start_time)
+              $timed_out = $elapsed_time_sec >= $reboot_wait_time
+
+              if !$failed_targets.empty() and !$timed_out {
+                # Wait for targets to be available again before rechecking
+                pe_patch::sleep(30)
+                $remaining_time = $reboot_wait_time - $elapsed_time_sec
+                wait_until_available($failed_targets, wait_time => $remaining_time, retry_interval => 1)
+              }
+
+              ({
+                'pending' => $failed_targets,
+                'ok'      => $memo['ok'] + $ok_targets,
+                'timed_out' => $timed_out,
+              })
+            }
+          }
+          $to_post_puppet_check = $wait_results['ok']
+          $reboot_timed_out = $wait_results['pending']
         }
 
-        $post_puppet_check = run_task('enterprise_tasks::run_puppet', $to_post_puppet_check, '_catch_errors' => true)
-        $check_passed = $post_puppet_check.ok_set.names
-        $check_failed = $post_puppet_check.error_set.names
+        if $to_post_puppet_check.empty {
+          $check_passed = []
+          $check_failed = []
+        } else {
+          # Sometimes a puppet run immediately after reboot fails, so give it a bit of time.
+          pe_patch::sleep(30)
+          $post_puppet_check = run_task('enterprise_tasks::run_puppet', $to_post_puppet_check, '_catch_errors' => true)
+          $check_passed = $post_puppet_check.ok_set.names
+          $check_failed = $post_puppet_check.error_set.names
+        }
       } else {
-        $check_passed = $patched
+        $check_passed = []
         $check_failed = []
+        $reboot_timed_out = []
       }
     }
   }
@@ -119,7 +172,8 @@ plan pe_patch::group_patching (
     'node_health_check_failed'   => $node_not_healthy,
     'patching_failed'            => $not_patched,
     'post_check_failed'          => $check_failed,
-    'nodes_patched'              => $check_passed,
+    'reboot_timed_out'           => $reboot_timed_out,
+    'nodes_patched'              => $patched,
     'counts'                     => {
       'all_nodes_in_group_count'   => $full_list.length,
       'patchable_nodes_count'      => $targets.length,
@@ -127,7 +181,8 @@ plan pe_patch::group_patching (
       'node_health_check_failed'   => $node_not_healthy.length,
       'patching_failed'            => $not_patched.length,
       'post_check_failed'          => $check_failed.length,
-      'nodes_patched'              => $check_passed.length,
+      'reboot_timed_out'           => $reboot_timed_out.length,
+      'nodes_patched'              => $patched.length,
     }
   })
 }
