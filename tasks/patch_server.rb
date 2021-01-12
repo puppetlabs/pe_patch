@@ -40,14 +40,14 @@ starttime = Time.now.iso8601
 BUFFER_SIZE = 4096
 
 # Function to write out the history file after patching
-def history(dts, message, code, reboot, security, job)
+def history(dts, message, code, reboot, security, job, was_rebooted)
   historyfile = if IS_WINDOWS
                   'C:/ProgramData/pe_patch/run_history'
                 else
                   '/var/cache/pe_patch/run_history'
                 end
   open(historyfile, 'a') do |f|
-    f.puts "#{dts}|#{message}|#{code}|#{reboot}|#{security}|#{job}"
+    f.puts "#{dts}|#{message}|#{code}|#{reboot}|#{security}|#{job}|#{was_rebooted}"
   end
 end
 
@@ -136,11 +136,12 @@ def pending_reboot_win
 end
 
 # Default output function
-def output(returncode, reboot, security, message, packages_updated, debug, job_id, pinned_packages, starttime)
+def output(returncode, reboot, was_rebooted, security, message, packages_updated, debug, job_id, pinned_packages, starttime)
   endtime = Time.now.iso8601
   json = {
     :return           => returncode,
     :reboot           => reboot,
+    :was_rebooted     => was_rebooted,
     :security         => security,
     :message          => message,
     :packages_updated => packages_updated,
@@ -151,7 +152,7 @@ def output(returncode, reboot, security, message, packages_updated, debug, job_i
     :end_time         => endtime,
   }
   puts JSON.pretty_generate(json)
-  history(starttime, message, returncode, reboot, security, job_id)
+  history(starttime, message, returncode, reboot, security, job_id, was_rebooted)
 end
 
 # Error output function
@@ -177,7 +178,7 @@ def err(code, kind, message, starttime)
   messagesplitfirst ||= '' # set to empty string if nil
   shortmsg = messagesplitfirst.chomp
 
-  history(starttime, shortmsg, exitcode, '', '', '')
+  history(starttime, shortmsg, exitcode, '', '', '', '')
   if IS_WINDOWS
     # windows
     # use ruby file logger
@@ -236,6 +237,32 @@ def reboot_required(family, release, reboot)
   end
 end
 
+def do_reboot_if_needed(reboot, facts, shutdown_cmd, log = nil)
+  # Reboot if the task has been told to and there is a requirement OR if reboot_override is set to true
+  needs_reboot = reboot_required(facts['values']['os']['family'], facts['values']['os']['release']['major'], reboot)
+  log.info "reboot_required returning #{needs_reboot}" if log
+  if needs_reboot == true
+    log.info 'Rebooting' if log
+    p1 = if IS_WINDOWS
+          spawn(shutdown_cmd)
+        else
+          fork { system(shutdown_cmd) }
+        end
+    Process.detach(p1)
+  end
+  needs_reboot
+end
+
+# Refresh the facts after patching - for non-windows systems
+# Windows scans can take an eternity after a patch run prior to being reboot (30+ minutes in a lab on 2008 versions..)
+# Best not to delay the whole patching process.
+# Note that the fact refresh (which includes a scan) runs on system startup anyway - see pe_patch puppet class
+def refresh_fact(fact_generation_cmd, starttime, log = nil)
+  log.info 'Running pe_patch fact refresh' if log
+  _fact_out, stderr, status = Open3.capture3(fact_generation_cmd)
+  err(status, 'pe_patch/fact', stderr, starttime) if status != 0
+end
+
 # Parse input, get params in scope
 params = nil
 begin
@@ -261,7 +288,7 @@ end
 
 # Cache the facts
 log.debug 'Gathering facts'
-full_facts, stderr, status = Open3.capture3(puppet_cmd, 'facts')
+full_facts, stderr, status = Open3.capture3(puppet_cmd, 'facts', 'find')
 err(status, 'pe_patch/facter', stderr, starttime) if status != 0
 facts = JSON.parse(full_facts)
 
@@ -441,17 +468,13 @@ end
 if updatecount.zero?
   if reboot == 'always'
     log.error 'Rebooting'
-    output('Success', reboot, security_only, 'No patches to apply, reboot triggered', '', '', '', pinned_pkgs, starttime)
-    $stdout.flush
     log.info 'No patches to apply, rebooting as requested'
-    p1 = if IS_WINDOWS
-           spawn(shutdown_cmd)
-         else
-           fork { system(shutdown_cmd) }
-         end
-    Process.detach(p1)
+    # Since reboot == 'always', was_rebooted = true
+    was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
+    output('Success', reboot, was_rebooted, security_only, 'No patches to apply, reboot triggered', '', '', '', pinned_pkgs, starttime)
+    $stdout.flush
   else
-    output('Success', reboot, security_only, 'No patches to apply', '', '', '', pinned_pkgs, starttime)
+    output('Success', reboot, false, security_only, 'No patches to apply', '', '', '', pinned_pkgs, starttime)
     log.info 'No patches to apply, exiting'
   end
   exit(0)
@@ -525,8 +548,9 @@ if facts['values']['os']['family'] == 'RedHat'
     job = 'Unsupported on RHEL5'
     pkg_hash = {}
   end
-
-  output(yum_return, reboot, security_only, 'Patching complete', pkg_hash, output, job, pinned_pkgs, starttime)
+  refresh_fact(fact_generation_cmd, starttime, log)
+  was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
+  output(yum_return, reboot, was_rebooted, security_only, 'Patching complete', pkg_hash, output, job, pinned_pkgs, starttime)
   log.info 'Patching complete'
 elsif facts['values']['os']['family'] == 'Debian'
   # Are we doing security only patching?
@@ -547,7 +571,9 @@ elsif facts['values']['os']['family'] == 'Debian'
   apt_std_out, stderr, status = Open3.capture3("#{deb_front} apt-get #{dpkg_params} -y #{deb_opts} #{apt_mode}")
   err(status, 'pe_patch/apt', stderr, starttime) if status != 0
 
-  output('Success', reboot, security_only, 'Patching complete', pkg_list, apt_std_out, '', pinned_pkgs, starttime)
+  refresh_fact(fact_generation_cmd, starttime, log)
+  was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
+  output('Success', reboot, was_rebooted, security_only, 'Patching complete', pkg_list, apt_std_out, '', pinned_pkgs, starttime)
   log.info 'Patching complete'
 elsif facts['values']['os']['family'] == 'windows'
   # we're on windows
@@ -604,7 +630,8 @@ elsif facts['values']['os']['family'] == 'windows'
 
     if errored.empty?
       # All patches applied successfully
-      output('Success', reboot, security_only, 'Patching complete', passed, win_std_out.split("\n"), '', '', starttime)
+      was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
+      output('Success', reboot, was_rebooted, security_only, 'Patching complete', passed, win_std_out.split("\n"), '', '', starttime)
     else
       message = "Some patches failed to apply\n"
       errored.each do |error|
@@ -622,9 +649,9 @@ elsif facts['values']['os']['family'] == 'windows'
       err(1, 'pe_patch/failed_patch', message, starttime)
     end
   else
-    output('Success', reboot, security_only, 'Patching complete', '', win_std_out.split("\n"), '', '', starttime)
+    was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
+    output('Success', reboot, was_rebooted, security_only, 'Patching complete', '', win_std_out.split("\n"), '', '', starttime)
   end
-
 elsif facts['values']['os']['family'] == 'Suse'
   zypper_required_params = '--non-interactive --no-abbrev --quiet'
   zypper_cmd_params = '--auto-agree-with-licenses'
@@ -643,7 +670,9 @@ elsif facts['values']['os']['family'] == 'Suse'
     status, output = run_with_timeout("zypper #{zypper_required_params} #{zypper_params} update -t package #{zypper_cmd_params}", timeout, 2)
     err(status, 'pe_patch/zypper', "zypper update returned non-zero (#{status}) : #{output}", starttime) if status != 0
   end
-  output('Success', reboot, security_only, 'Patching complete', pkg_list, output, '', pinned_pkgs, starttime)
+  refresh_fact(fact_generation_cmd, starttime, log)
+  was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
+  output('Success', reboot, was_rebooted, security_only, 'Patching complete', pkg_list, output, '', pinned_pkgs, starttime)
   log.info 'Patching complete'
   log.debug "Timeout value set to : #{timeout}"
 else
@@ -652,27 +681,5 @@ else
   err(200, 'pe_patch/unsupported_os', 'Unsupported OS', starttime)
 end
 
-# Refresh the facts now that we've patched - for non-windows systems
-# Windows scans can take an eternity after a patch run prior to being reboot (30+ minutes in a lab on 2008 versions..)
-# Best not to delay the whole patching process here.
-# Note that the fact refresh (which includes a scan) runs on system startup anyway - see pe_patch puppet class
-if facts['values']['os']['family'] != 'windows'
-  log.info 'Running pe_patch fact refresh'
-  _fact_out, stderr, status = Open3.capture3(fact_generation_cmd)
-  err(status, 'pe_patch/fact', stderr, starttime) if status != 0
-end
-
-# Reboot if the task has been told to and there is a requirement OR if reboot_override is set to true
-needs_reboot = reboot_required(facts['values']['os']['family'], facts['values']['os']['release']['major'], reboot)
-log.info "reboot_required returning #{needs_reboot}"
-if needs_reboot == true
-  log.info 'Rebooting'
-  p1 = if IS_WINDOWS
-         spawn(shutdown_cmd)
-       else
-         fork { system(shutdown_cmd) }
-       end
-  Process.detach(p1)
-end
 log.info 'pe_patch run complete'
 exit 0
