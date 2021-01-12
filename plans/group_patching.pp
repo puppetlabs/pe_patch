@@ -72,9 +72,11 @@ plan pe_patch::group_patching (
       $check_passed       = []
       $reboot_timed_out   = []
     } else {
-      # So we can detect when a node has rebooted
-      $begin_boot_time_results = without_default_logging() || {
-        run_task('pe_patch::last_boot_time', $node_healthy)
+      if $run_health_check {
+        # So we can detect when a node has rebooted
+        $begin_boot_time_results = without_default_logging() || {
+          run_task('pe_patch::last_boot_time', $node_healthy)
+        }
       }
 
       # Actually carry out the patching on all healthy nodes
