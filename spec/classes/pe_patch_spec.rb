@@ -7,11 +7,13 @@ describe 'pe_patch' do
 
       case os_facts[:kernel]
       when 'Linux'
-        let(:cache_dir) { '/var/cache/pe_patch' }
-        let(:fact_cmd) { '/usr/local/bin/pe_patch_fact_generation.sh' }
+        let(:cache_dir) { '/opt/puppetlabs/pe_patch' }
+        let(:old_cache_dir) { '/var/cache/pe_patch' }
+        let(:fact_cmd) { "#{cache_dir}/pe_patch_fact_generation.sh" }
       when 'windows'
-        let(:cache_dir) { 'C:/ProgramData/pe_patch' }
-        let(:fact_cmd) { 'C:/ProgramData/pe_patch/pe_patch_fact_generation.ps1' }
+        let(:cache_dir) { 'C:/ProgramData/PuppetLabs/pe_patch' }
+        let(:old_cache_dir) { 'C:/ProgramData/pe_patch' }
+        let(:fact_cmd) { "#{cache_dir}/pe_patch_fact_generation.ps1" }
       end
 
       context 'when os_patching is applied' do
@@ -147,6 +149,10 @@ describe 'pe_patch' do
       it { is_expected.to contain_class('pe_patch') }
       it { is_expected.to contain_file(cache_dir).with({
         'ensure' => 'directory',
+      })}
+      it { is_expected.to contain_file(old_cache_dir).with({
+        'ensure' => 'absent',
+        'force'  => true,
       })}
 
       it { is_expected.to contain_file(cache_dir + '/blackout_windows').with({

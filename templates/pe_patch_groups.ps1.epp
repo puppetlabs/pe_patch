@@ -102,10 +102,10 @@ param(
     [Int32]$MaxUpdates,
 
     # path to lock file
-    [String]$LockFile = "$($env:programdata)\pe_patch\pe_patch_groups.lock",
+    [String]$LockFile = "$($env:programdata)\PuppetLabs\pe_patch\pe_patch_groups.lock",
 
     # path to logs directory
-    [String]$LogDir = "$($env:programdata)\pe_patch",
+    [String]$LogDir = "$($env:programdata)\PuppetLabs\pe_patch",
 
     # how long to retain log files
     [Int32]$LogFileRetainDays = 30

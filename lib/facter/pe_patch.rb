@@ -17,9 +17,9 @@ else
     blocked_reasons = []
 
     if Facter.value(:kernel) == 'Linux'
-      pe_patch_dir = '/var/cache/pe_patch'
+      pe_patch_dir = '/opt/puppetlabs/pe_patch'
     elsif Facter.value(:kernel) == 'windows'
-      pe_patch_dir = 'C:\ProgramData\pe_patch'
+      pe_patch_dir = 'C:\ProgramData\PuppetLabs\pe_patch'
     end
 
     chunk(:updates) do
@@ -157,6 +157,7 @@ else
           data['last_run']['post_reboot'] = matchdata[3]
           data['last_run']['security_only'] = matchdata[4]
           data['last_run']['job_id'] = matchdata[5]
+          data['last_run']['was_rebooted'] = matchdata[6] if matchdata[6]
         end
       end
       data

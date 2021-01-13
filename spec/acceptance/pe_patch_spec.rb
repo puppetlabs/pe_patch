@@ -1,6 +1,6 @@
 require 'spec_helper_acceptance'
 
-cache_dir = '/var/cache/pe_patch'
+cache_dir = '/opt/puppetlabs/pe_patch'
 
 pp_class_base = <<-PUPPETCODE
     class { 'cron':
@@ -49,7 +49,7 @@ describe 'pe_patch module' do
       expect(file(cache_dir + '/reboot_override')).to be_file
       expect(file(cache_dir + '/blackout_windows')).not_to be_file
       expect(file(cache_dir + '/patch_group')).not_to be_file
-      expect(file('/usr/local/bin/pe_patch_fact_generation.sh')).to be_file
+      expect(file('/opt/puppetlabs/pe_patch/pe_patch_fact_generation.sh')).to be_file
       if host_inventory['facter']['os']['name'] == 'CentOS' || host_inventory['facter']['os']['name'] == 'Ubuntu'
         run_bolt_task('pe_patch::clean_cache')
         run_bolt_task('pe_patch::refresh_fact')
@@ -71,7 +71,7 @@ describe 'pe_patch module with blackout window' do
       expect(file(cache_dir + '/blackout_windows')).to be_file
       expect(file(cache_dir + '/blackout_windows')).to contain (/End of year/)
       expect(file(cache_dir + '/patch_group')).not_to be_file
-      expect(file('/usr/local/bin/pe_patch_fact_generation.sh')).to be_file
+      expect(file('/opt/puppetlabs/pe_patch/pe_patch_fact_generation.sh')).to be_file
       expect { run_bolt_task('pe_patch::patch_server') }.to raise_error(/Patching blocked/)
     end
   end
@@ -90,7 +90,7 @@ describe 'pe_patch module with patching group' do
       expect(file(cache_dir + '/blackout_windows')).not_to be_file
       expect(file(cache_dir + '/patch_group')).to be_file
       expect(file(cache_dir + '/patch_group')).to contain (/Week1/)
-      expect(file('/usr/local/bin/pe_patch_fact_generation.sh')).to be_file
+      expect(file('/opt/puppetlabs/pe_patch/pe_patch_fact_generation.sh')).to be_file
     end
   end
 end
@@ -100,7 +100,7 @@ describe 'pe_patch module purge' do
     it do
       idempotent_apply(pp_class_absent)
       expect(file(cache_dir)).not_to be_directory
-      expect(file('/usr/local/bin/pe_patch_fact_generation.sh')).not_to be_file
+      expect(file('/opt/puppetlabs/pe_patch/pe_patch_fact_generation.sh')).not_to be_file
     end
   end
 end
