@@ -17,9 +17,9 @@ else
     blocked_reasons = []
 
     if Facter.value(:kernel) == 'Linux'
-      pe_patch_dir = '/var/cache/pe_patch'
+      pe_patch_dir = '/opt/puppetlabs/pe_patch'
     elsif Facter.value(:kernel) == 'windows'
-      pe_patch_dir = 'C:\ProgramData\pe_patch'
+      pe_patch_dir = 'C:\ProgramData\PuppetLabs\pe_patch'
     end
 
     chunk(:updates) do

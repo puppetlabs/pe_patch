@@ -14,9 +14,9 @@ if IS_WINDOWS
   # windows
   # use ruby file logger
   require 'logger'
-  log = Logger.new('C:/ProgramData/pe_patch/pe_patch_refresh_fact_task.log', 'monthly')
+  log = Logger.new('C:/ProgramData/PuppetLabs/pe_patch/pe_patch_refresh_fact_task.log', 'monthly')
   # set paths/commands for windows
-  fact_generation_script = 'C:/ProgramData/pe_patch/pe_patch_fact_generation.ps1'
+  fact_generation_script = 'C:/ProgramData/PuppetLabs/pe_patch/pe_patch_fact_generation.ps1'
   fact_generation_cmd = "#{ENV['systemroot']}/system32/WindowsPowerShell/v1.0/powershell.exe -ExecutionPolicy RemoteSigned -file #{fact_generation_script}"
 else
   # not windows
@@ -24,7 +24,7 @@ else
   require 'syslog/logger'
   log = Syslog::Logger.new 'pe_patch'
   # set paths/commands for linux
-  fact_generation_script = '/var/cache/pe_patch/pe_patch_fact_generation.sh'
+  fact_generation_script = '/opt/puppetlabs/pe_patch/pe_patch_fact_generation.sh'
   fact_generation_cmd = fact_generation_script
 end
 
@@ -64,7 +64,7 @@ def err(code, kind, message, starttime)
     # windows
     # use ruby file logger
     require 'logger'
-    log = Logger.new('C:/ProgramData/pe_patch/pe_patch_refresh_fact_task.log', 'monthly')
+    log = Logger.new('C:/ProgramData/PuppetLabs/pe_patch/pe_patch_refresh_fact_task.log', 'monthly')
   else
     # not windows
     # create syslog logger

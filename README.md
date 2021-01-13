@@ -264,7 +264,7 @@ If patching was blocked, the task will report similar to below:
 Error: Task exited : 100
 Patching blocked
 ```
-A summary of the patch run is also written to `/var/cache/pe_patch/run_history`, the last line of which is used by the `pe_patch.last_run` fact.
+A summary of the patch run is also written to `/opt/puppetlabs/pe_patch/run_history`, the last line of which is used by the `pe_patch.last_run` fact.
 
 ```bash
 2018-08-07T14:47:24+10:00|No patches to apply|Success|false|false|
@@ -284,15 +284,15 @@ Each system with the pe_patch class applied will have several files and a direct
 
 The script used to scan for updates and generate the fact data is stored in the following location based on the OS type:
 
-* Linux - `/var/cache/pe_patch/pe_patch_fact_generation.sh`
-* Windows - `c:\ProgramData\pe_patch\pe_patch_fact_generation.ps1`
+* Linux - `/opt/puppetlabs/pe_patch/pe_patch_fact_generation.sh`
+* Windows - `c:\ProgramData\PuppetLabs\pe_patch\pe_patch_fact_generation.ps1`
 
 #### pe_patch directory
 
 The pe_patch directory contains the various control files needed for this module and its tasks to work correctly.  The locations are as follows:
 
-* Linux - `/var/cache/pe_patch`
-* Windows - `c:\ProgramData\pe_patch`
+* Linux - `/opt/puppetlabs/pe_patch`
+* Windows - `c:\ProgramData\PuppetLabs\pe_patch`
 
 The following files are stored in this directory:
 
