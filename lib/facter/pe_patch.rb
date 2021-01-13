@@ -157,6 +157,7 @@ else
           data['last_run']['post_reboot'] = matchdata[3]
           data['last_run']['security_only'] = matchdata[4]
           data['last_run']['job_id'] = matchdata[5]
+          data['last_run']['was_rebooted'] = matchdata[6] if matchdata[6]
         end
       end
       data
