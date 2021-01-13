@@ -15,11 +15,11 @@ if IS_WINDOWS
   # windows
   # use ruby file logger
   require 'logger'
-  log = Logger.new('C:/ProgramData/pe_patch/pe_patch_task.log', 'monthly')
+  log = Logger.new('C:/ProgramData/PuppetLabs/pe_patch/pe_patch_task.log', 'monthly')
   # set paths/commands for windows
-  fact_generation_script = 'C:/ProgramData/pe_patch/pe_patch_fact_generation.ps1'
+  fact_generation_script = 'C:/ProgramData/PuppetLabs/pe_patch/pe_patch_fact_generation.ps1'
   fact_generation_cmd = "#{ENV['systemroot']}/system32/WindowsPowerShell/v1.0/powershell.exe -ExecutionPolicy RemoteSigned -file #{fact_generation_script}"
-  patch_script = 'C:/ProgramData/pe_patch/pe_patch_groups.ps1'
+  patch_script = 'C:/ProgramData/PuppetLabs/pe_patch/pe_patch_groups.ps1'
   puppet_cmd = "#{ENV['programfiles']}/Puppet Labs/Puppet/bin/puppet"
   shutdown_cmd = 'shutdown /r /t 60 /c "Rebooting due to the installation of updates by pe_patch" /d p:2:17'
 else
@@ -28,7 +28,7 @@ else
   require 'syslog/logger'
   log = Syslog::Logger.new 'pe_patch'
   # set paths/commands for linux
-  fact_generation_script = '/usr/local/bin/pe_patch_fact_generation.sh'
+  fact_generation_script = '/opt/puppetlabs/pe_patch/pe_patch_fact_generation.sh'
   fact_generation_cmd = fact_generation_script
   puppet_cmd = '/opt/puppetlabs/puppet/bin/puppet'
   shutdown_cmd = 'nohup /sbin/shutdown -r +1 2>/dev/null 1>/dev/null &'
@@ -42,9 +42,9 @@ BUFFER_SIZE = 4096
 # Function to write out the history file after patching
 def history(dts, message, code, reboot, security, job, was_rebooted)
   historyfile = if IS_WINDOWS
-                  'C:/ProgramData/pe_patch/run_history'
+                  'C:/ProgramData/PuppetLabs/pe_patch/run_history'
                 else
-                  '/var/cache/pe_patch/run_history'
+                  '/opt/puppetlabs/pe_patch/run_history'
                 end
   open(historyfile, 'a') do |f|
     f.puts "#{dts}|#{message}|#{code}|#{reboot}|#{security}|#{job}|#{was_rebooted}"
@@ -183,7 +183,7 @@ def err(code, kind, message, starttime)
     # windows
     # use ruby file logger
     require 'logger'
-    log = Logger.new('C:/ProgramData/pe_patch/pe_patch_task.log', 'monthly')
+    log = Logger.new('C:/ProgramData/PuppetLabs/pe_patch/pe_patch_task.log', 'monthly')
   else
     # not windows
     # create syslog logger

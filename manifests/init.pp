@@ -171,8 +171,8 @@ class pe_patch (
     case $::kernel {
       'Linux': {
         $fact_upload_cmd     = '/opt/puppetlabs/bin/puppet facts upload'
-        $cache_dir           = '/var/cache/pe_patch'
-        $fact_dir            = '/usr/local/bin'
+        $cache_dir           = '/opt/puppetlabs/pe_patch'
+        $fact_dir            = $cache_dir
         $fact_file           = 'pe_patch_fact_generation.sh'
         $fact_mode           = '0700'
         File {
@@ -180,14 +180,27 @@ class pe_patch (
           group => $patch_data_group,
           mode  => '0644',
         }
+        # Clean up old locations
+        file { '/var/cache/pe_patch':
+          ensure => 'absent',
+          force  => true,
+        }
+        file { '/usr/local/bin/pe_patch_fact_generation.sh':
+          ensure => 'absent',
+          force  => true,
+        }
       }
       'windows': {
         $fact_upload_cmd     = '"C:/Program Files/Puppet Labs/Puppet/bin/puppet.bat" facts upload'
-        $cache_dir           = 'C:/ProgramData/pe_patch'
+        $cache_dir           = 'C:/ProgramData/PuppetLabs/pe_patch'
         $fact_dir            = $cache_dir
         $fact_file           = 'pe_patch_fact_generation.ps1'
         $fact_mode           = '0770'
         $patch_file          = 'pe_patch_groups.ps1'
+        file { 'C:/ProgramData/pe_patch':
+          ensure => 'absent',
+          force  => true,
+        }
       }
       default: { fail("Unsupported OS : ${facts['kernel']}") }
     }
@@ -330,7 +343,7 @@ class pe_patch (
     if $fact_upload_exec and $fact_upload {
       exec { $fact_upload_exec:
         command     => $fact_upload_cmd,
-        path        => ['/usr/bin','/bin','/sbin','/usr/local/bin'],
+        path        => ['/usr/bin','/bin','/sbin','/usr/local/bin', $fact_dir],
         refreshonly => true,
         subscribe   => File[
           $fact_cmd,
