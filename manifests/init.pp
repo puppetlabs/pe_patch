@@ -172,7 +172,7 @@ class pe_patch (
       'Linux': {
         $fact_upload_cmd     = '/opt/puppetlabs/bin/puppet facts upload'
         $cache_dir           = '/var/cache/pe_patch'
-        $fact_dir            = '/usr/local/bin'
+        $fact_dir            = $cache_dir
         $fact_file           = 'pe_patch_fact_generation.sh'
         $fact_mode           = '0700'
         File {
@@ -330,7 +330,7 @@ class pe_patch (
     if $fact_upload_exec and $fact_upload {
       exec { $fact_upload_exec:
         command     => $fact_upload_cmd,
-        path        => ['/usr/bin','/bin','/sbin','/usr/local/bin'],
+        path        => ['/usr/bin','/bin','/sbin','/usr/local/bin', $fact_dir],
         refreshonly => true,
         subscribe   => File[
           $fact_cmd,

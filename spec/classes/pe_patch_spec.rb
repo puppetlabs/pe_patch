@@ -8,7 +8,7 @@ describe 'pe_patch' do
       case os_facts[:kernel]
       when 'Linux'
         let(:cache_dir) { '/var/cache/pe_patch' }
-        let(:fact_cmd) { '/usr/local/bin/pe_patch_fact_generation.sh' }
+        let(:fact_cmd) { '/var/cache/pe_patch/pe_patch_fact_generation.sh' }
       when 'windows'
         let(:cache_dir) { 'C:/ProgramData/pe_patch' }
         let(:fact_cmd) { 'C:/ProgramData/pe_patch/pe_patch_fact_generation.ps1' }

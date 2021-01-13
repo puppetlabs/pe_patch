@@ -28,7 +28,7 @@ else
   require 'syslog/logger'
   log = Syslog::Logger.new 'pe_patch'
   # set paths/commands for linux
-  fact_generation_script = '/usr/local/bin/pe_patch_fact_generation.sh'
+  fact_generation_script = '/var/cache/pe_patch/pe_patch_fact_generation.sh'
   fact_generation_cmd = fact_generation_script
   puppet_cmd = '/opt/puppetlabs/puppet/bin/puppet'
   shutdown_cmd = 'nohup /sbin/shutdown -r +1 2>/dev/null 1>/dev/null &'

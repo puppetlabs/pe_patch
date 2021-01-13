@@ -284,7 +284,7 @@ Each system with the pe_patch class applied will have several files and a direct
 
 The script used to scan for updates and generate the fact data is stored in the following location based on the OS type:
 
-* Linux - `/usr/local/bin/pe_patch_fact_generation.sh`
+* Linux - `/var/cache/pe_patch/pe_patch_fact_generation.sh`
 * Windows - `c:\ProgramData\pe_patch\pe_patch_fact_generation.ps1`
 
 #### pe_patch directory
