@@ -364,7 +364,7 @@ class pe_patch (
           }
         }
 
-        if ( $::osfamily == 'RedHat' and $::os.release.major < 8 and $manage_delta_rpm) {
+        if ( $::osfamily == 'RedHat' and Integer($facts['os']['release']['major']) < 8 and $manage_delta_rpm) {
           package { 'deltarpm':
             ensure => $delta_rpm,
           }
