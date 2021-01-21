@@ -8,7 +8,7 @@ plan pe_patch::group_patching (
   Optional[Boolean] $health_check_noop = false,
   Optional[Boolean] $health_check_use_cached_catalog = false,
   Optional[Boolean] $health_check_service_enabled = true,
-  Optional[Variant[Boolean,Enum['running', 'stopped']]] $health_check_service_running = 'running',
+  Optional[Boolean] $health_check_service_running = true,
 ){
   # Query PuppetDB to find nodes that have the patch group,
   # are not blocked, and have patches to apply.
