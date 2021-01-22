@@ -2,7 +2,7 @@ plan pe_patch::group_patching (
   String $patch_group,
   Boolean $security_only = false,
   Enum['always', 'never', 'patched', 'smart'] $reboot = 'patched',
-  Integer $reboot_wait_time = 300,
+  Integer $reboot_wait_time = 600,
   Boolean $run_health_check = true,
   Optional[Integer] $health_check_runinterval = 1800,
   Optional[Boolean] $health_check_noop = false,
@@ -87,7 +87,11 @@ plan pe_patch::group_patching (
               break()
             }
 
-            out::message("Waiting for ${$memo['pending'].size} node(s) to reboot. Note that a failed pe_patch::last_boot_time task is normal while a target is in the middle of rebooting, and may be safely ignored.")
+            $plural = $memo['pending'].size > 1 ? {
+              true => 's',
+              default => '',
+            }
+            out::message("Waiting for ${$memo['pending'].size} node${plural} to reboot. Note that a failed pe_patch::last_boot_time task is normal while a target is in the middle of rebooting, and may be safely ignored.")
             $current_boot_time_results = run_task('pe_patch::last_boot_time', $memo['pending'], _catch_errors => true)
 
             $failed_results = $current_boot_time_results.filter |$current_boot_time_res| {
@@ -125,8 +129,7 @@ plan pe_patch::group_patching (
           }
         }
         $reboot_timed_out = $wait_results['pending']
-        $post_patch_ready = $patched.filter |$patched_node| { !$reboot_timed_out.any |$timed_out| { $timed_out == $patched_node } }
-        $test = $patched - $reboot_timed_out
+        $post_patch_ready = $patched - $reboot_timed_out
       }
     }
 
