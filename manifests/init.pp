@@ -68,6 +68,10 @@
 #   run customised workflows such as gracefully shutting down applications.  The entry
 #   must be a single absolute filename with no arguments or parameters.
 #
+# @param post_patching_command [Pe_patch::Absolutepath]
+#   The full path of the command to run after patching, but before rebooting.  The entry
+#   must be a single absolute filename with no arguments or parameters.
+#
 # @param patch_cron_hour
 #   The hour(s) for the cron job to run (defaults to absent, which means '*' in cron)
 #
@@ -145,6 +149,7 @@ class pe_patch (
   Enum['installed', 'absent', 'purged', 'held', 'latest'] $yum_plugin_security = 'installed',
   Optional[Variant[Boolean, Enum['always', 'never', 'patched', 'smart', 'default']]] $reboot_override = 'default',
   Optional[Pe_patch::Absolutepath] $pre_patching_command = undef,
+  Optional[Pe_patch::Absolutepath] $post_patching_command = undef,
   Optional[Hash] $blackout_windows   = undef,
   $patch_group                       = undef,
   $patch_cron_hour                   = absent,
@@ -268,6 +273,11 @@ class pe_patch (
       default => 'absent'
     }
 
+    $post_patching_command_ensure = ($ensure == 'present' and $post_patching_command ) ? {
+      true    => 'file',
+      default => 'absent'
+    }
+
     $patch_group_ensure = ($ensure == 'present' and $patch_group ) ? {
       true    => 'file',
       default => 'absent'
@@ -286,6 +296,11 @@ class pe_patch (
     file { "${cache_dir}/pre_patching_command":
       ensure  => $pre_patching_command_ensure,
       content => $pre_patching_command,
+    }
+
+    file { "${cache_dir}/post_patching_command":
+      ensure  => $post_patching_command_ensure,
+      content => $post_patching_command,
     }
 
     file { "${cache_dir}/block_patching_on_warnings":

@@ -274,6 +274,32 @@ else
       data
     end
 
+    chunk(:post_patching_command) do
+      data = {}
+      post_patching_command = pe_patch_dir + '/post_patching_command'
+      if File.file?(post_patching_command) && !File.empty?(post_patching_command)
+        command = File.open(post_patching_command, 'r').to_a
+        line = command.last
+        matchdata = line.match(/^(.*)$/)
+        if matchdata[0]
+          if File.file?(matchdata[0])
+            if File.executable?(matchdata[0])
+              data['post_patching_command'] = matchdata[0]
+            else
+              warnings['blackouts'] = "Post_patching_command not executable : #{matchdata[0]}"
+              blocked = true
+              blocked_reasons.push "Post_patching_command not executable : #{matchdata[0]}"
+            end
+          else
+            warnings['post_patching_command'] = "Invalid post_patching_command entry : #{matchdata[0]}.  File must exist and be a single command with no arguments"
+            blocked = true
+            blocked_reasons.push "Invalid post_patching_command entry : #{matchdata[0]}.  File must exist and be a single command with no arguments"
+          end
+        end
+      end
+      data
+    end
+
     # Should we patch if there are warnings?
     chunk(:block_patching_on_warnings) do
       data = {}
