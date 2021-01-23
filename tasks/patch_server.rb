@@ -263,19 +263,19 @@ def refresh_fact(fact_generation_cmd, starttime, log = nil)
   err(status, 'pe_patch/fact', stderr, starttime) if status != 0
 end
 
-def run_pre_post_patching_command(command, pre_or_post, starttime, log = nil)
-  if File.exist?(command)
-    if File.executable?(command)
-      log.info "Running #{pre_or_post}_patching_command : #{command}" if log
-      command_output, status = Open3.capture2e(command)
-      err(status, "pe_patch/#{pre_or_post}_patching_command", "#{pre_or_post.capitalize} patching command failed: #{command_output}", starttime) if status != 0
-      log.info "Finished #{pre_or_post}_patching_command : #{command}" if log
-      log.debug "#{pre_or_post}_patching_command output: #{command_output}" if log
+def run_pre_post_patching_script(scriptpath, pre_or_post, starttime, log = nil)
+  if File.exist?(scriptpath)
+    if File.executable?(scriptpath)
+      log.info "Running #{pre_or_post.capitalize} patching script : #{scriptpath}" if log
+      script_output, status = Open3.capture2e(scriptpath)
+      err(status, "pe_patch/#{pre_or_post}_patching_script", "#{pre_or_post.capitalize} patching script failed: #{script_output}", starttime) if status != 0
+      log.info "Finished #{pre_or_post.capitalize} patching script : #{scriptpath}" if log
+      log.debug "#{pre_or_post.capitalize} patching script output: #{script_output}" if log
     else
-      err(210, "pe_patch/#{pre_or_post}_patching_command", "#{pre_or_post.capitalize} patching command not executable #{command}", starttime)
+      err(210, "pe_patch/#{pre_or_post}_patching_script", "#{pre_or_post.capitalize} patching script not executable: #{scriptpath}", starttime)
     end
-  elsif command != ''
-    err(200, "pe_patch/#{pre_or_post}_patching_command", "#{pre_or_post.capitalize} patching command not found #{command}", starttime)
+  elsif scriptpath != ''
+    err(200, "pe_patch/#{pre_or_post}_patching_script", "#{pre_or_post.capitalize} patching script not found: #{scriptpath}", starttime)
   end
 end
 
@@ -460,12 +460,12 @@ else
   securityflag = ''
 end
 
-# Get pre/post_patching_command
-pre_patching_command = facts['values']['pe_patch']['pre_patching_command'] || ''
-post_patching_command = facts['values']['pe_patch']['post_patching_command'] || ''
+# Get pre/post_patching_scriptpath
+pre_patching_scriptpath = facts['values']['pe_patch']['pre_patching_scriptpath'] || ''
+post_patching_scriptpath = facts['values']['pe_patch']['post_patching_scriptpath'] || ''
 
-# Run pre_patching_command
-run_pre_post_patching_command(pre_patching_command, 'pre', starttime, log)
+# Run pre-patching script
+run_pre_post_patching_script(pre_patching_scriptpath, 'pre', starttime, log)
 
 # There are no updates available, exit cleanly rebooting if the override flag is set
 if updatecount.zero?
@@ -552,7 +552,7 @@ if facts['values']['os']['family'] == 'RedHat'
     pkg_hash = {}
   end
   refresh_fact(fact_generation_cmd, starttime, log)
-  run_pre_post_patching_command(post_patching_command, 'post', starttime, log)
+  run_pre_post_patching_script(post_patching_scriptpath, 'post', starttime, log)
   was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
   output(yum_return, reboot, was_rebooted, security_only, 'Patching complete', pkg_hash, output, job, pinned_pkgs, starttime)
   log.info 'Patching complete'
@@ -576,7 +576,7 @@ elsif facts['values']['os']['family'] == 'Debian'
   err(status, 'pe_patch/apt', stderr, starttime) if status != 0
 
   refresh_fact(fact_generation_cmd, starttime, log)
-  run_pre_post_patching_command(post_patching_command, 'post', starttime, log)
+  run_pre_post_patching_script(post_patching_scriptpath, 'post', starttime, log)
   was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
   output('Success', reboot, was_rebooted, security_only, 'Patching complete', pkg_list, apt_std_out, '', pinned_pkgs, starttime)
   log.info 'Patching complete'
@@ -635,7 +635,7 @@ elsif facts['values']['os']['family'] == 'windows'
 
     if errored.empty?
       # All patches applied successfully
-      run_pre_post_patching_command(post_patching_command, 'post', starttime, log)
+      run_pre_post_patching_script(post_patching_scriptpath, 'post', starttime, log)
       was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
       output('Success', reboot, was_rebooted, security_only, 'Patching complete', passed, win_std_out.split("\n"), '', '', starttime)
     else
@@ -655,7 +655,7 @@ elsif facts['values']['os']['family'] == 'windows'
       err(1, 'pe_patch/failed_patch', message, starttime)
     end
   else
-    run_pre_post_patching_command(post_patching_command, 'post', starttime, log)
+    run_pre_post_patching_script(post_patching_scriptpath, 'post', starttime, log)
     was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
     output('Success', reboot, was_rebooted, security_only, 'Patching complete', '', win_std_out.split("\n"), '', '', starttime)
   end
@@ -678,7 +678,7 @@ elsif facts['values']['os']['family'] == 'Suse'
     err(status, 'pe_patch/zypper', "zypper update returned non-zero (#{status}) : #{output}", starttime) if status != 0
   end
   refresh_fact(fact_generation_cmd, starttime, log)
-  run_pre_post_patching_command(post_patching_command, 'post', starttime, log)
+  run_pre_post_patching_script(post_patching_scriptpath, 'post', starttime, log)
   was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
   output('Success', reboot, was_rebooted, security_only, 'Patching complete', pkg_list, output, '', pinned_pkgs, starttime)
   log.info 'Patching complete'

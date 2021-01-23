@@ -63,13 +63,13 @@
 # @param patch_group [String]
 #   A freeform text entry used to allocate a node to a specific patch group (Optional)
 #
-# @param pre_patching_command [Pe_patch::Absolutepath]
-#   The full path of the command to run prior to running patching.  Can be used to
+# @param pre_patching_scriptpath [Pe_patch::Absolutepath]
+#   The full path of the executable script or binary to run prior to running patching.  Can be used to
 #   run customised workflows such as gracefully shutting down applications.  The entry
 #   must be a single absolute filename with no arguments or parameters.
 #
-# @param post_patching_command [Pe_patch::Absolutepath]
-#   The full path of the command to run after patching, but before rebooting.  The entry
+# @param post_patching_scriptpath [Pe_patch::Absolutepath]
+#   The full path of the executable script or binary to run after patching, but before rebooting.  The entry
 #   must be a single absolute filename with no arguments or parameters.
 #
 # @param patch_cron_hour
@@ -148,8 +148,8 @@ class pe_patch (
   Enum['installed', 'absent', 'purged', 'held', 'latest'] $delta_rpm = 'installed',
   Enum['installed', 'absent', 'purged', 'held', 'latest'] $yum_plugin_security = 'installed',
   Optional[Variant[Boolean, Enum['always', 'never', 'patched', 'smart', 'default']]] $reboot_override = 'default',
-  Optional[Pe_patch::Absolutepath] $pre_patching_command = undef,
-  Optional[Pe_patch::Absolutepath] $post_patching_command = undef,
+  Optional[Pe_patch::Absolutepath] $pre_patching_scriptpath = undef,
+  Optional[Pe_patch::Absolutepath] $post_patching_scriptpath = undef,
   Optional[Hash] $blackout_windows   = undef,
   $patch_group                       = undef,
   $patch_cron_hour                   = absent,
@@ -268,12 +268,12 @@ class pe_patch (
       default => 'absent'
     }
 
-    $pre_patching_command_ensure = ($ensure == 'present' and $pre_patching_command ) ? {
+    $pre_patching_scriptpath_ensure = ($ensure == 'present' and $pre_patching_scriptpath ) ? {
       true    => 'file',
       default => 'absent'
     }
 
-    $post_patching_command_ensure = ($ensure == 'present' and $post_patching_command ) ? {
+    $post_patching_scriptpath_ensure = ($ensure == 'present' and $post_patching_scriptpath ) ? {
       true    => 'file',
       default => 'absent'
     }
@@ -293,14 +293,14 @@ class pe_patch (
       content => $patch_group,
     }
 
-    file { "${cache_dir}/pre_patching_command":
-      ensure  => $pre_patching_command_ensure,
-      content => $pre_patching_command,
+    file { "${cache_dir}/pre_patching_scriptpath":
+      ensure  => $pre_patching_scriptpath_ensure,
+      content => $pre_patching_scriptpath,
     }
 
-    file { "${cache_dir}/post_patching_command":
-      ensure  => $post_patching_command_ensure,
-      content => $post_patching_command,
+    file { "${cache_dir}/post_patching_scriptpath":
+      ensure  => $post_patching_scriptpath_ensure,
+      content => $post_patching_scriptpath,
     }
 
     file { "${cache_dir}/block_patching_on_warnings":
