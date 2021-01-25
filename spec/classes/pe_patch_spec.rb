@@ -117,17 +117,32 @@ describe 'pe_patch' do
         it { is_expected.to contain_file(cache_dir + '/patch_group').with_content(/^Week3$/)}
       end
 
-      context 'with pre_patching_command => /bin/true' do
-        let(:params) { {'pre_patching_command' => '/bin/true'} }
-        it { is_expected.to contain_file(cache_dir + '/pre_patching_command').with({
+      context 'with pre_patching_scriptpath => /bin/true' do
+        let(:params) { {'pre_patching_scriptpath' => '/bin/true'} }
+        it { is_expected.to contain_file(cache_dir + '/pre_patching_scriptpath').with({
           'ensure' => 'file',
         })}
-        it { is_expected.to contain_file(cache_dir + '/pre_patching_command').with_content(/^\/bin\/true$/)}
+        it { is_expected.to contain_file(cache_dir + '/pre_patching_scriptpath').with_content(/^\/bin\/true$/)}
       end
 
-      context 'with pre_patching_command => undef' do
-        let(:params) { {'pre_patching_command' => :undef } }
-        it { is_expected.to contain_file(cache_dir + '/pre_patching_command').with({
+      context 'with pre_patching_scriptpath => undef' do
+        let(:params) { {'pre_patching_scriptpath' => :undef } }
+        it { is_expected.to contain_file(cache_dir + '/pre_patching_scriptpath').with({
+          'ensure' => 'absent',
+        })}
+      end
+
+      context 'with post_patching_scriptpath => /bin/true' do
+        let(:params) { {'post_patching_scriptpath' => '/bin/true'} }
+        it { is_expected.to contain_file(cache_dir + '/post_patching_scriptpath').with({
+          'ensure' => 'file',
+        })}
+        it { is_expected.to contain_file(cache_dir + '/post_patching_scriptpath').with_content(/^\/bin\/true$/)}
+      end
+
+      context 'with post_patching_scriptpath => undef' do
+        let(:params) { {'post_patching_scriptpath' => :undef } }
+        it { is_expected.to contain_file(cache_dir + '/post_patching_scriptpath').with({
           'ensure' => 'absent',
         })}
       end

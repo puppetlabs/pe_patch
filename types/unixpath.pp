@@ -1,2 +1,2 @@
 # From Stdlib::Unixpath
-type Pe_patch::Unixpath = Pattern[/^\/([^\/\0]+\/*)*$/]
+type Pe_patch::Unixpath = Pattern[/\A\/([^\n\/\0]+\/*)*\z/]
