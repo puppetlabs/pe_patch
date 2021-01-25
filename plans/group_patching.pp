@@ -9,6 +9,7 @@ plan pe_patch::group_patching (
   Optional[Boolean] $health_check_use_cached_catalog = false,
   Optional[Boolean] $health_check_service_enabled = true,
   Optional[Boolean] $health_check_service_running = true,
+  Optional[Pe_patch::Absolutepath] $post_reboot_scriptpath = undef,
 ){
   # Query PuppetDB to find nodes that have the patch group,
   # are not blocked, and have patches to apply.
@@ -131,6 +132,14 @@ plan pe_patch::group_patching (
         $reboot_timed_out = $wait_results['pending']
         $post_patch_ready = $patched - $reboot_timed_out
       }
+    }
+
+    ### Post reboot script, Input: $post_patch_ready, Output: None ###
+    # Run the post_reboot_scriptpath, if defined. Don't fail the plan
+    # if the script fails. The user will be able to see the result in
+    # the console.
+    if $post_reboot_scriptpath {
+      run_command($post_reboot_scriptpath, $post_patch_ready, '_catch_errors' => true)
     }
 
     ### Post patching health check, Input: $post_patch_ready, Output: $post_patch_puppet_run_passed ###

@@ -248,26 +248,52 @@ else
     end
 
     # Should we patch if there are warnings?
-    chunk(:pre_patching_command) do
+    chunk(:pre_patching_scriptpath) do
       data = {}
-      pre_patching_command = pe_patch_dir + '/pre_patching_command'
-      if File.file?(pre_patching_command) && !File.empty?(pre_patching_command)
-        command = File.open(pre_patching_command, 'r').to_a
+      pre_patching_scriptpath = pe_patch_dir + '/pre_patching_scriptpath'
+      if File.file?(pre_patching_scriptpath) && !File.empty?(pre_patching_scriptpath)
+        command = File.open(pre_patching_scriptpath, 'r').to_a
         line = command.last
         matchdata = line.match(/^(.*)$/)
         if matchdata[0]
           if File.file?(matchdata[0])
             if File.executable?(matchdata[0])
-              data['pre_patching_command'] = matchdata[0]
+              data['pre_patching_scriptpath'] = matchdata[0]
             else
-              warnings['blackouts'] = "Pre_patching_command not executable : #{matchdata[0]}"
+              warnings['blackouts'] = "pre_patching_scriptpath not executable : #{matchdata[0]}"
               blocked = true
-              blocked_reasons.push "Pre_patching_command not executable : #{matchdata[0]}"
+              blocked_reasons.push "pre_patching_scriptpath not executable : #{matchdata[0]}"
             end
           else
-            warnings['pre_patching_command'] = "Invalid pre_patching_command entry : #{matchdata[0]}.  File must exist and be a single command with no arguments"
+            warnings['pre_patching_scriptpath'] = "Invalid pre_patching_scriptpath entry : #{matchdata[0]}.  File must exist and be a single command with no arguments"
             blocked = true
-            blocked_reasons.push "Invalid pre_patching_command entry : #{matchdata[0]}.  File must exist and be a single command with no arguments"
+            blocked_reasons.push "Invalid pre_patching_scriptpath entry : #{matchdata[0]}.  File must exist and be a single command with no arguments"
+          end
+        end
+      end
+      data
+    end
+
+    chunk(:post_patching_scriptpath) do
+      data = {}
+      post_patching_scriptpath = pe_patch_dir + '/post_patching_scriptpath'
+      if File.file?(post_patching_scriptpath) && !File.empty?(post_patching_scriptpath)
+        command = File.open(post_patching_scriptpath, 'r').to_a
+        line = command.last
+        matchdata = line.match(/^(.*)$/)
+        if matchdata[0]
+          if File.file?(matchdata[0])
+            if File.executable?(matchdata[0])
+              data['post_patching_scriptpath'] = matchdata[0]
+            else
+              warnings['blackouts'] = "post_patching_scriptpath not executable : #{matchdata[0]}"
+              blocked = true
+              blocked_reasons.push "post_patching_scriptpath not executable : #{matchdata[0]}"
+            end
+          else
+            warnings['post_patching_scriptpath'] = "Invalid post_patching_scriptpath entry : #{matchdata[0]}.  File must exist and be a single command with no arguments"
+            blocked = true
+            blocked_reasons.push "Invalid post_patching_scriptpath entry : #{matchdata[0]}.  File must exist and be a single command with no arguments"
           end
         end
       end
