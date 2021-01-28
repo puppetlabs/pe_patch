@@ -1,10 +1,15 @@
 plan pe_patch::group_patching (
   String $patch_group,
-  Boolean $security_only = false,
-  Enum['always', 'never', 'patched', 'smart'] $reboot = 'patched',
-  Integer $reboot_wait_time = 600,
-  Boolean $run_health_check = true,
+  Optional[Enum['always', 'never', 'patched', 'smart']] $reboot = 'patched',
+  Optional[String] $yum_params = undef,
+  Optional[String] $dpkg_params = undef,
+  Optional[String] $zypper_params = undef,
+  Optional[Integer] $patch_task_timeout = 3600,
   Optional[Integer] $health_check_runinterval = 1800,
+  Optional[Integer] $reboot_wait_time = 600,
+  Optional[Boolean] $security_only = false,
+  Optional[Boolean] $run_health_check = true,
+  Optional[Boolean] $clean_cache = false,
   Optional[Boolean] $health_check_noop = false,
   Optional[Boolean] $health_check_use_cached_catalog = false,
   Optional[Boolean] $health_check_service_enabled = true,
@@ -66,8 +71,13 @@ plan pe_patch::group_patching (
       # Actually carry out the patching on all healthy nodes
       $patch_result = run_task('pe_patch::patch_server',
                             $patch_ready,
+                            yum_params      => $yum_params,
+                            dpkg_params     => $dpkg_params,
+                            zypper_params   => $zypper_params,
+                            timeout         => $patch_task_timeout,
                             reboot          => $reboot,
                             security_only   => $security_only,
+                            clean_cache     => $clean_cache
                             '_catch_errors' => true)
 
       # Pull out list of those that are ok/in error
