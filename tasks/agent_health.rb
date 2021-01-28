@@ -5,7 +5,14 @@ require 'time'
 require 'json'
 require 'socket'
 
-confprint = 'puppet config print --render-as json'
+IS_WINDOWS = (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/)
+puppet_cmd = IS_WINDOWS ? "\'#{ENV['programfiles']}/Puppet Labs/Puppet/bin/puppet.bat\'" : '/opt/puppetlabs/puppet/bin/puppet'
+# We need to have a better way to detect where Puppet resides if it isn't in the default
+# location on Windows (probably looking up HKLM/Software/Puppet Labs/Puppet/RememberedInstallDir[64]),
+# but for now, fall back to assuming it's on the PATH
+puppet_cmd = 'puppet' unless File.exist?(puppet_cmd)
+
+confprint = "#{puppet_cmd} config print --render-as json"
 output, stderr, status = Open3.capture3(confprint)
 if status != 0
   puts stderr
@@ -129,14 +136,14 @@ if File.file?(last_run_report_file)
   end
 end
 
-_output, _stderr, status = Open3.capture3('puppet ssl verify')
+_output, _stderr, status = Open3.capture3("#{puppet_cmd} ssl verify")
 if status != 0
   details['issues']['signed_cert'] = 'SSL verify error'
 end
 
 enabled = false
 running = false
-output, _stderr, _status = Open3.capture3('puppet resource service puppet')
+output, _stderr, _status = Open3.capture3("#{puppet_cmd} resource service puppet")
 output.split("\n").each do |line|
   if line =~ %r{^\s+enable\s+=> '#{target_service_enabled}',$}
     enabled = true
@@ -183,7 +190,7 @@ else
   exit_code = 1
   json[:_error] = { 
                     msg: "Issues found: " + details['issues'].to_s,
-                    kind: 'puppet_health_check/agent_health',
+                    kind: 'pe_patch/agent_health',
                     details: details,
                   }
 end

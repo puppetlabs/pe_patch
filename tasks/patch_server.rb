@@ -20,7 +20,7 @@ if IS_WINDOWS
   fact_generation_script = 'C:/ProgramData/PuppetLabs/pe_patch/pe_patch_fact_generation.ps1'
   fact_generation_cmd = "#{ENV['systemroot']}/system32/WindowsPowerShell/v1.0/powershell.exe -ExecutionPolicy RemoteSigned -file #{fact_generation_script}"
   patch_script = 'C:/ProgramData/PuppetLabs/pe_patch/pe_patch_groups.ps1'
-  puppet_cmd = "#{ENV['programfiles']}/Puppet Labs/Puppet/bin/puppet"
+  puppet_cmd = "\'#{ENV['programfiles']}/Puppet Labs/Puppet/bin/puppet.bat\'"
   shutdown_cmd = 'shutdown /r /t 60 /c "Rebooting due to the installation of updates by pe_patch" /d p:2:17'
 else
   # not windows
@@ -35,6 +35,11 @@ else
 
   ENV['LC_ALL'] = 'C'
 end
+
+# We need to have a better way to detect where Puppet resides if it isn't in the default
+# location on Windows (probably looking up HKLM/Software/Puppet Labs/Puppet/RememberedInstallDir[64]),
+# but for now, fall back to assuming it's on the PATH
+puppet_cmd = 'puppet' unless File.exist?(puppet_cmd)
 
 starttime = Time.now.iso8601
 BUFFER_SIZE = 4096
