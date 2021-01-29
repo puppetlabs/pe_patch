@@ -5,15 +5,44 @@ require 'time'
 require 'json'
 require 'socket'
 
-IS_WINDOWS = (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/)
-puppet_cmd = IS_WINDOWS ? "\'#{ENV['programfiles']}/Puppet Labs/Puppet/bin/puppet.bat\'" : '/opt/puppetlabs/puppet/bin/puppet'
-# We need to have a better way to detect where Puppet resides if it isn't in the default
-# location on Windows (probably looking up HKLM/Software/Puppet Labs/Puppet/RememberedInstallDir[64]),
-# but for now, fall back to assuming it's on the PATH
-puppet_cmd = 'puppet' unless File.exist?(puppet_cmd)
+# Lifted from https://github.com/puppetlabs/enterprise_tasks/blob/c8855bb3198567e40204178682b094f924af5754/lib/enterprise_tasks/puppet_helper.rb#L7
+def puppet_bin
+  if Gem.win_platform?
+    require 'win32/registry'
+    installed_dir =
+      begin
+        Win32::Registry::HKEY_LOCAL_MACHINE.open('SOFTWARE\Puppet Labs\Puppet') do |reg|
+          # rubocop:disable Style/RescueModifier
+          # Rescue missing key
+          dir = reg['RememberedInstallDir64'] rescue ''
+          # Both keys may exist, make sure the dir exists
+          break dir if File.exist?(dir)
 
-confprint = "#{puppet_cmd} config print --render-as json"
-output, stderr, status = Open3.capture3(confprint)
+          # Rescue missing key
+          reg['RememberedInstallDir'] rescue ''
+          # rubocop:enable Style/RescueModifier
+        end
+      rescue Win32::Registry::Error
+        # Rescue missing registry path
+        ''
+      end
+
+    path =
+      if installed_dir.empty?
+        # Fall back to assuming it's on the PATH
+        'puppet'
+      else
+        File.join(installed_dir, 'bin', 'puppet.bat')
+      end
+  else
+    path = '/opt/puppetlabs/puppet/bin/puppet'
+  end
+  path
+end
+
+puppet_cmd = puppet_bin
+
+output, stderr, status = Open3.capture3(puppet_cmd, 'config', 'print', '--render-as', 'json')
 if status != 0
   puts stderr
   exit 1
@@ -136,14 +165,14 @@ if File.file?(last_run_report_file)
   end
 end
 
-_output, _stderr, status = Open3.capture3("#{puppet_cmd} ssl verify")
+_output, _stderr, status = Open3.capture3(puppet_cmd, 'ssl', 'verify')
 if status != 0
   details['issues']['signed_cert'] = 'SSL verify error'
 end
 
 enabled = false
 running = false
-output, _stderr, _status = Open3.capture3("#{puppet_cmd} resource service puppet")
+output, _stderr, _status = Open3.capture3(puppet_cmd, 'resource', 'service', 'puppet')
 output.split("\n").each do |line|
   if line =~ %r{^\s+enable\s+=> '#{target_service_enabled}',$}
     enabled = true
