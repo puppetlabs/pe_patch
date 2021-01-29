@@ -77,7 +77,7 @@ plan pe_patch::group_patching (
                             timeout         => $patch_task_timeout,
                             reboot          => $reboot,
                             security_only   => $security_only,
-                            clean_cache     => $clean_cache
+                            clean_cache     => $clean_cache,
                             '_catch_errors' => true)
 
       # Pull out list of those that are ok/in error
