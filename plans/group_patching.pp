@@ -126,10 +126,11 @@ plan pe_patch::group_patching (
             $timed_out = $elapsed_time_sec >= $reboot_wait_time
 
             if !$failed_targets.empty and !$timed_out {
-              # Wait for targets to be available again before rechecking
+              # Wait for targets to be available again before rechecking. If we end up failing
+              # this wait on any of those nodes, we'll catch it in the next iteration.
               pe_patch::sleep(30)
               $remaining_time = $reboot_wait_time - $elapsed_time_sec
-              wait_until_available($failed_targets, wait_time => $remaining_time, retry_interval => 1)
+              wait_until_available($failed_targets, wait_time => $remaining_time, retry_interval => 1, '_catch_errors' => true)
             }
 
             ({

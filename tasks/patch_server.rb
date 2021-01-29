@@ -7,7 +7,46 @@ require 'time'
 require 'timeout'
 
 # constant so available in methods. global variables are naughty in ruby land!
-IS_WINDOWS = (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/)
+IS_WINDOWS = Gem.win_platform?
+
+# Lifted from https://github.com/puppetlabs/enterprise_tasks/blob/c8855bb3198567e40204178682b094f924af5754/lib/enterprise_tasks/puppet_helper.rb#L7
+# At some point, we may want to create a helper lib that gets required here, but since that would
+# make this a multi-file task, leaving the task in a single file allows it to work with pre-6.6 puppet agents.
+def puppet_bin
+  if Gem.win_platform?
+    require 'win32/registry'
+    installed_dir =
+      begin
+        Win32::Registry::HKEY_LOCAL_MACHINE.open('SOFTWARE\Puppet Labs\Puppet') do |reg|
+          # rubocop:disable Style/RescueModifier
+          # Rescue missing key
+          dir = reg['RememberedInstallDir64'] rescue ''
+          # Both keys may exist, make sure the dir exists
+          break dir if File.exist?(dir)
+
+          # Rescue missing key
+          reg['RememberedInstallDir'] rescue ''
+          # rubocop:enable Style/RescueModifier
+        end
+      rescue Win32::Registry::Error
+        # Rescue missing registry path
+        ''
+      end
+
+    path =
+      if installed_dir.empty?
+        # Fall back to assuming it's on the PATH
+        'puppet'
+      else
+        File.join(installed_dir, 'bin', 'puppet.bat')
+      end
+  else
+    path = '/opt/puppetlabs/puppet/bin/puppet'
+  end
+  path
+end
+
+puppet_cmd = puppet_bin
 
 $stdout.sync = true
 
@@ -20,7 +59,6 @@ if IS_WINDOWS
   fact_generation_script = 'C:/ProgramData/PuppetLabs/pe_patch/pe_patch_fact_generation.ps1'
   fact_generation_cmd = "#{ENV['systemroot']}/system32/WindowsPowerShell/v1.0/powershell.exe -ExecutionPolicy RemoteSigned -file #{fact_generation_script}"
   patch_script = 'C:/ProgramData/PuppetLabs/pe_patch/pe_patch_groups.ps1'
-  puppet_cmd = "#{ENV['programfiles']}/Puppet Labs/Puppet/bin/puppet"
   shutdown_cmd = 'shutdown /r /t 60 /c "Rebooting due to the installation of updates by pe_patch" /d p:2:17'
 else
   # not windows
@@ -30,7 +68,6 @@ else
   # set paths/commands for linux
   fact_generation_script = '/opt/puppetlabs/pe_patch/pe_patch_fact_generation.sh'
   fact_generation_cmd = fact_generation_script
-  puppet_cmd = '/opt/puppetlabs/puppet/bin/puppet'
   shutdown_cmd = 'nohup /sbin/shutdown -r +1 2>/dev/null 1>/dev/null &'
 
   ENV['LC_ALL'] = 'C'
