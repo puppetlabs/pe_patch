@@ -50,7 +50,9 @@ plan pe_patch::group_patching (
       if $puppet_healthy.empty {
         $patch_ready = []
       } else {
-        $pre_patch_run_puppet_check = run_task('enterprise_tasks::run_puppet', $puppet_healthy, '_catch_errors' => true)
+        $pre_patch_run_puppet_check = run_task('enterprise_tasks::run_puppet', $puppet_healthy,
+          max_timeout     => 256,
+          '_catch_errors' => true)
         $patch_ready = $pre_patch_run_puppet_check.ok_set.names
         $pre_patch_puppet_run_failed = $pre_patch_run_puppet_check.error_set.names
       }
@@ -160,7 +162,9 @@ plan pe_patch::group_patching (
     } else {
       # Sometimes a puppet run immediately after reboot fails, so give it a bit of time.
       pe_patch::sleep(30)
-      $post_puppet_check = run_task('enterprise_tasks::run_puppet', $post_patch_ready, '_catch_errors' => true)
+      $post_puppet_check = run_task('enterprise_tasks::run_puppet', $post_patch_ready,
+        max_timeout     => 256,
+        '_catch_errors' => true)
       $post_patch_puppet_run_passed = $post_puppet_check.ok_set.names
       $post_patch_puppet_run_failed = $post_puppet_check.error_set.names
     }
