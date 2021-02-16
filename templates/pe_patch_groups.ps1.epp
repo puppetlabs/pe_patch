@@ -779,7 +779,35 @@ $scriptBlock = {
 
     if ($null -ne $updateRunResults) {
         # output as JSON with ASCII encoding which plays nice with puppet etc
-        $updateRunResults | ConvertTo-Json | Out-File $outputFilePath -Encoding ascii
+        # $updateRunResults | ConvertTo-Json | Out-File $outputFilePath -Encoding ascii
+        try {
+            $updateRunResults | ConvertTo-Json | Out-File $outputFilePath -Encoding ascii
+        }
+        catch {
+            Add-LogEntry "Exception caught in ConvertTo-Json due to unknown handler. Invoke conversion with XML"
+            
+            # create scriptblock to support the powershell command invocation
+            $ConvertToJson = {
+            param($outputFilePath)
+
+            # if the xml is created, then proceed with the conditional block
+            if ((Get-Item -Path "$env:TEMP\pe_patch*.xml" -ea 0)) {
+            
+            # import the xml file in current session and store the custom object results
+            $updateRunResults = Import-Clixml -Path "$env:TEMP\pe_patch*.xml"
+            
+            # convert output to json and remove the xml since no longer used.
+            # param variable is referenced from parent script to retain timestamp on file path
+            $updateRunResults | ConvertTo-Json | Out-File $outputFilePath -Encoding ascii
+            Remove-Item -Path "$env:TEMP\pe_patch*.xml" -force 
+            }
+            }
+            # store the update run results in xml format, which will be later passed to JSON mapping
+            $xmlFilePath = Join-Path -Path $env:temp -ChildPath ("pe_patch-results_{0:yyyy_MM_dd-HH_mm_ss}.xml" -f (Get-Date))
+            Export-Clixml -InputObject $updateRunResults -Path $xmlFilePath
+            # invoke powershell session, since the current one is obselete
+            powershell.exe -command "&{$ConvertToJson}$outputFilePath"
+        }
 
         # we want this one in the pipeline no matter what, so that it's returned as output
         # from the scheduled task method
