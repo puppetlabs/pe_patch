@@ -175,7 +175,7 @@ class pe_patch (
 
     case $::kernel {
       'Linux': {
-        $fact_upload_cmd     = '/opt/puppetlabs/bin/puppet facts upload'
+        $fact_upload_cmd     = '/opt/puppetlabs/bin/puppet facts upload > /dev/null'
         $cache_dir           = '/opt/puppetlabs/pe_patch'
         $fact_dir            = $cache_dir
         $fact_file           = 'pe_patch_fact_generation.sh'
@@ -196,7 +196,7 @@ class pe_patch (
         }
       }
       'windows': {
-        $fact_upload_cmd     = '"C:/Program Files/Puppet Labs/Puppet/bin/puppet.bat" facts upload'
+        $fact_upload_cmd     = '"C:/Program Files/Puppet Labs/Puppet/bin/puppet.bat" facts upload > $null'
         $cache_dir           = 'C:/ProgramData/PuppetLabs/pe_patch'
         $fact_dir            = $cache_dir
         $fact_file           = 'pe_patch_fact_generation.ps1'
