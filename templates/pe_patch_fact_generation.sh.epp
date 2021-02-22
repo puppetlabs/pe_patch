@@ -155,10 +155,10 @@ diff=$(diff -y --suppress-common "${UPDATEFILE}" "${UPDATEFILE}.previous" | wc -
 rm -f "${UPDATEFILE}.previous"
 if [ "${diff}" != "0" ]
 then
-  echo "Uploading facts"
+  logger -p info -t pe_patch_fact_generation.sh "Uploading facts"
   puppet facts upload --environment "<%= $environment %>" 2>/dev/null 1>/dev/null
 fi
-logger -p info -t pe_patch_fact_generation.sh "patch data refreshed"
+logger -p info -t pe_patch_fact_generation.sh "Patch data refreshed"
 
 rm $LOCKFILE
 exit 0
