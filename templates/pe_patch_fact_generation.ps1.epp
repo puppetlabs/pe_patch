@@ -59,6 +59,9 @@ function Save-LockFile {
     # start assuming it's not OK to save a lock file
     $lockFileOk = $false
 
+    # how long to wait for lock file to clear
+    $lockfileTimeout = 600
+
     # check if it exists already
     if (Test-Path $LockFile) {
         Add-LogEntry -Output Verbose "Existing lock file found."
@@ -76,14 +79,21 @@ function Save-LockFile {
 
             # if process exists
             if ($process) {
-                # Check the path of the process matching PID in the lock file
-                if ($process.path -match "powershell.exe") {
-                    # most likely is another copy of this script
-                    Throw "Lock file found, it appears PID $($process.id) is another copy of pe_patch_fact_generation or pe_patch_groups. Exiting."
+                $timer = [Diagnostics.Stopwatch]::StartNew()
+                while (($timer.Elapsed.TotalSeconds -lt $lockfileTimeout) -and ($process)) {
+                    Add-LogEntry -Output Verbose "Lock file with active PID $($process.id) detected. Waiting for lock file to clear."
+                    Start-Sleep -Seconds 10
+                    $process = Get-Process | Where-Object { $_.ID -eq $lockFileContent }
                 }
+                $timer.Stop()
+                # If we timed out, $process is not null
+                if ($process) {
+                    Throw "Timed out after waiting ${lockfileTimeout} seconds for the lock file with PID $($process.id) to clear."
+                }
+                $lockFileOk = $process -eq $null
             }
             else {
-                Add-LogEntry -Output Verbose "No process found matching the PID in lock file"
+                Add-LogEntry -Output Verbose "No process found matching the PID in lock file."
                 # no process found matching the PID in the lock file
                 # remove it and continue
                 Remove-LockFile
@@ -107,6 +117,11 @@ function Save-LockFile {
         catch {
             Throw "Error saving lockfile."
         }
+    }
+    else {
+        # We shouldn't ever reach here, but just in case
+        # we forget to handle a case above.
+        Throw "Lock file saving blocked."
     }
 }
 
