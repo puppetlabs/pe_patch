@@ -327,7 +327,7 @@ function Invoke-RefreshPuppetFacts {
     $diff = (Compare-Object $updateFileContents $updateFilePreviousContents)
     if ($diff) {
         Add-LogEntry "Uploading puppet facts"
-        $puppetCmd = Join-Path $env:ProgramFiles -ChildPath "Puppet Labs\Puppet\bin\puppet.bat"
+        $puppetCmd = Join-Path "<%= $windows_puppet_installpath %>" -ChildPath "\bin\puppet.bat"
         & $puppetCmd facts upload --environment="<%= $environment %>" --color=false
     }
 }

@@ -173,6 +173,13 @@ class pe_patch (
       default   => undef,
     }
 
+    if $facts['env_windows_installdir'] {
+      $windows_puppet_install_path = $facts['env_windows_installdir']
+    } else
+    {
+      $windows_puppet_install_path = 'C:\Program Files\Puppet Labs\Puppet'
+    }
+
     case $::kernel {
       'Linux': {
         $fact_upload_cmd     = '/opt/puppetlabs/bin/puppet facts upload'
@@ -196,7 +203,7 @@ class pe_patch (
         }
       }
       'windows': {
-        $fact_upload_cmd     = '"C:/Program Files/Puppet Labs/Puppet/bin/puppet.bat" facts upload'
+        $fact_upload_cmd     = "\"${windows_puppet_install_path}\\bin\\puppet.bat\" facts upload"
         $cache_dir           = 'C:/ProgramData/PuppetLabs/pe_patch'
         $fact_dir            = $cache_dir
         $fact_file           = 'pe_patch_fact_generation.ps1'
@@ -250,7 +257,7 @@ class pe_patch (
         file { $fact_cmd:
           ensure  => $ensure_file,
           mode    => $fact_mode,
-          content => epp("${module_name}/${fact_file}.epp", {'windows_update_criteria' => $windows_update_criteria, 'environment' => $environment}),
+          content => epp("${module_name}/${fact_file}.epp", {'windows_puppet_installpath' => $windows_puppet_install_path, 'windows_update_criteria' => $windows_update_criteria, 'environment' => $environment}),
           notify  => Exec[$fact_exec],
         }
 
