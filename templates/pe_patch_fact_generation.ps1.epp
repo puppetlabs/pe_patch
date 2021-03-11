@@ -291,6 +291,7 @@ function Invoke-RefreshPuppetFacts {
     $dataDir = 'C:\ProgramData\PuppetLabs\pe_patch'
     $updateFile = Join-Path -Path $dataDir -ChildPath 'package_updates'
     $kbFile = Join-Path -Path $dataDir -ChildPath 'missing_update_kbs'
+    $secKbFile = Join-Path -Path $dataDir -ChildPath 'missing_security_kbs'
     $secUpdateFile = Join-Path -Path $dataDir -ChildPath 'security_package_updates'
     $rebootReqdFile = Join-Path -Path $dataDir -ChildPath  'reboot_required'
 
@@ -314,6 +315,9 @@ function Invoke-RefreshPuppetFacts {
 
     # filter to security updates and output
     $securityUpdates | Select-Object -ExpandProperty Title | Out-File $secUpdateFile -Encoding ascii
+
+    # output list of KBs that need to be applied
+    $securityUpdates | ForEach-Object { $_.KBArticleIDs | ForEach-Object { "KB$_" } } | Out-File $secKbFile -Encoding ascii
 
     # get pending reboot details
     Get-PendingReboot | Out-File $rebootReqdFile -Encoding ascii
