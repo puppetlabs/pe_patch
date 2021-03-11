@@ -60,6 +60,20 @@ else
       data
     end
 
+    chunk(:kb_secupdates) do
+      data = {}
+      kblist = []
+      kbfile = pe_patch_dir + '/missing_security_kbs'
+      if File.file?(kbfile) && !File.zero?(kbfile)
+        kbs = File.open(kbfile, 'r').read
+        kbs.each_line do |line|
+          kblist.push line.chomp
+        end
+      end
+      data['missing_security_kbs'] = kblist
+      data
+    end
+
     chunk(:secupdates) do
       data = {}
       secupdatelist = []
