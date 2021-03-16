@@ -319,6 +319,8 @@ function Invoke-RefreshPuppetFacts {
     if ($securityUpdates -ne $null) {
         # output list of KBs that need to be applied
         $securityUpdates | ForEach-Object { $_.KBArticleIDs | ForEach-Object { "KB$_" } } | Out-File $secKbFile -Encoding ascii
+    } else {
+        $securityUpdates | Out-File $secKbFile -Encoding ascii
     } 
 
     # get pending reboot details
