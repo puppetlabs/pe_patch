@@ -316,8 +316,10 @@ function Invoke-RefreshPuppetFacts {
     # filter to security updates and output
     $securityUpdates | Select-Object -ExpandProperty Title | Out-File $secUpdateFile -Encoding ascii
 
-    # output list of KBs that need to be applied
-    $securityUpdates | ForEach-Object { $_.KBArticleIDs | ForEach-Object { "KB$_" } } | Out-File $secKbFile -Encoding ascii
+    if ($securityUpdates -ne $null) {
+        # output list of KBs that need to be applied
+        $securityUpdates | ForEach-Object { $_.KBArticleIDs | ForEach-Object { "KB$_" } } | Out-File $secKbFile -Encoding ascii
+    } 
 
     # get pending reboot details
     Get-PendingReboot | Out-File $rebootReqdFile -Encoding ascii
