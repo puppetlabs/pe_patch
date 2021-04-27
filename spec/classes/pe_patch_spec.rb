@@ -41,7 +41,12 @@ describe 'pe_patch' do
               'manage_yum_plugin_security' => true,
             }
           }
-          it { is_expected.to contain_package('deltarpm') }
+
+          if os_facts[:os]['release']['major'] == '8'
+            it { is_expected.to contain_package('drpm') }
+          else
+            it { is_expected.to contain_package('deltarpm') }
+          end
           it { is_expected.to contain_package('yum-utils') }
           it { is_expected.to contain_package('yum-plugin-security') }
         end
