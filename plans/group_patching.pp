@@ -1,6 +1,6 @@
 plan pe_patch::group_patching (
   String $patch_group,
-  Optional[Enum['always', 'never', 'patched', 'smart']] $reboot = 'patched',
+  Optional[Enum['always', 'never', 'patched', 'smart']] $reboot = 'never',
   Optional[String] $yum_params = undef,
   Optional[String] $dpkg_params = undef,
   Optional[String] $zypper_params = undef,
@@ -14,6 +14,7 @@ plan pe_patch::group_patching (
   Optional[Boolean] $health_check_use_cached_catalog = false,
   Optional[Boolean] $health_check_service_enabled = true,
   Optional[Boolean] $health_check_service_running = true,
+  Optional[Boolean] $sequential_patching = false,
   Optional[Pe_patch::Absolutepath] $post_reboot_scriptpath = undef,
 ){
   # Query PuppetDB to find nodes that have the patch group,
@@ -61,7 +62,7 @@ plan pe_patch::group_patching (
     }
 
     ### Patching, Input: $patch_ready, Output: $post_patch_ready ###
-    ### Add'l result params: $not_patched, $reboot_timed_out ###
+    ### Add'l result params: $patched, $not_patched, $reboot_timed_out ###
     if $patch_ready.empty {
       $post_patch_ready = []
     } else {
@@ -70,89 +71,103 @@ plan pe_patch::group_patching (
         run_task('pe_patch::last_boot_time', $patch_ready)
       }
 
+      $begin_boot_time_target_info = Hash($begin_boot_time_results.results.map |$item| {
+        [$item.target.name, $item.message]
+      })
+
       # Actually carry out the patching on all healthy nodes
-      $patch_result = run_task('pe_patch::patch_server',
-                            $patch_ready,
-                            yum_params      => $yum_params,
-                            dpkg_params     => $dpkg_params,
-                            zypper_params   => $zypper_params,
-                            timeout         => $patch_task_timeout,
-                            reboot          => $reboot,
-                            security_only   => $security_only,
-                            clean_cache     => $clean_cache,
-                            '_catch_errors' => true)
-
-      # Pull out list of those that are ok/in error
-      $patched = $patch_result.ok_set.names
-      $not_patched = $patch_result.error_set.names
-      $rebooting_result = $patch_result.ok_set.results.filter | $result | { $result.value['was_rebooted'] }
-      $rebooting = $rebooting_result.map | $result | { $result.target.name }
-
-      ### Wait for Reboot ###
-      if $rebooting.empty {
-        $post_patch_ready = $patched
-      } else {
-        # Adapted from puppetlabs-reboot
-        $start_time = Timestamp()
-        $wait_results = without_default_logging() || {
-          $reboot_wait_time.reduce({'pending' => $rebooting, 'ok' => []}) |$memo, $_| {
-            if ($memo['pending'].empty or $memo['timed_out']) {
-              break()
-            }
-
-            $plural = $memo['pending'].size > 1 ? {
-              true => 's',
-              default => '',
-            }
-            out::message("Waiting for ${$memo['pending'].size} node${plural} to reboot. Note that a failed pe_patch::last_boot_time task is normal while a target is in the middle of rebooting, and may be safely ignored.")
-            $current_boot_time_results = run_task('pe_patch::last_boot_time', $memo['pending'], _catch_errors => true)
-
-            $failed_results = $current_boot_time_results.filter |$current_boot_time_res| {
-              # If we errored, need to check again, since it's probably still rebooting
-              if !$current_boot_time_res.ok {
-                true
-              } else {
-                # If the boot time is the same as it was before we patched,
-                # we haven't rebooted yet and need to check again.
-                $target_name = $current_boot_time_res.target.name
-                $begin_boot_time_res = $begin_boot_time_results.find($target_name)
-                $current_boot_time_res.value == $begin_boot_time_res.value
-              }
-            }
-
-            # Turn array of results into ResultSet to we can extract Targets
-            $failed_targets = ResultSet($failed_results).targets.map |$t| { $t.name }
-            $ok_targets = $memo['pending'] - $failed_targets
-
-            $elapsed_time_sec = Integer(Timestamp() - $start_time)
-            $timed_out = $elapsed_time_sec >= $reboot_wait_time
-
-            if !$failed_targets.empty and !$timed_out {
-              # Wait for targets to be available again before rechecking. If we end up failing
-              # this wait on any of those nodes, we'll catch it in the next iteration.
-              pe_patch::sleep(30)
-              $remaining_time = $reboot_wait_time - $elapsed_time_sec
-              wait_until_available($failed_targets, wait_time => $remaining_time, retry_interval => 1, '_catch_errors' => true)
-            }
-
-            ({
-              'pending' => $failed_targets,
-              'ok'      => $memo['ok'] + $ok_targets,
-              'timed_out' => $timed_out,
-            })
+      if $sequential_patching {
+        $sequential_result = $patch_ready.reduce({'patched' => [], 'not_patched' => [], 'reboot_timed_out' => []}) |$memo, $node| {
+          ## Patch ##
+          $task_result = run_task('pe_patch::patch_server',
+                                $node,
+                                "Patching ${node}",
+                                yum_params      => $yum_params,
+                                dpkg_params     => $dpkg_params,
+                                zypper_params   => $zypper_params,
+                                timeout         => $patch_task_timeout,
+                                reboot          => $reboot,
+                                security_only   => $security_only,
+                                clean_cache     => $clean_cache,
+                                '_catch_errors' => true)
+          if $task_result.ok {
+            $memo_patched = $memo['patched'] + [$node]
+            $memo_not_patched = $memo['not_patched']
+          } else {
+            $memo_not_patched = $memo['not_patched'] + [$node]
+            $memo_patched = $memo['patched']
           }
-        }
-        $reboot_timed_out = $wait_results['pending']
-        $post_patch_ready = $patched - $reboot_timed_out
-      }
-    }
 
-    ### Post reboot script, Input: $post_patch_ready, Output: None ###
-    # Run the post_reboot_scriptpath, if defined. Don't fail the plan
-    # if the script fails. The user will be able to see the result in
-    # the console.
-    if $post_reboot_scriptpath {
-      run_command($post_reboot_scriptpath, $post_patch_ready, '_catch_errors' => true)
+          ## Wait for Reboot ##
+          if $task_result.first.value['was_rebooted'] {
+            $wait_results = run_plan('pe_patch::wait_for_reboot',
+                                    target_info => { $node => $begin_boot_time_target_info[$node] },
+                                    reboot_wait_time => $reboot_wait_time)
+            if $wait_results['pending'].empty {
+              $memo_reboot_timed_out = $memo['reboot_timed_out']
+              $reboot_ok = true
+            } else {
+              $memo_reboot_timed_out = $memo['reboot_timed_out'] + [$node]
+              $reboot_ok = false
+            }
+          } else {
+            $memo_reboot_timed_out = $memo['reboot_timed_out']
+            $reboot_ok = true
+          }
+
+          ## Post reboot script ##
+          # Run the post_reboot_scriptpath, if defined. Don't fail the plan
+          # if the script fails. The user will be able to see the result in
+          # the console.
+          if $post_reboot_scriptpath and $reboot_ok {
+            run_command($post_reboot_scriptpath, $node, '_catch_errors' => true)
+          }
+
+          ({
+            'patched' => $memo_patched,
+            'not_patched' => $memo_not_patched,
+            'reboot_timed_out' => $memo_reboot_timed_out,
+          })
+        }
+        ## Sequential results ##
+        $patched = $sequential_result['patched']
+        $not_patched = $sequential_result['not_patched']
+        $reboot_timed_out = $sequential_result['reboot_timed_out']
+        $post_patch_ready = $patched - $reboot_timed_out
+      } else {
+        $patch_result = run_task('pe_patch::patch_server',
+                              $patch_ready,
+                              yum_params      => $yum_params,
+                              dpkg_params     => $dpkg_params,
+                              zypper_params   => $zypper_params,
+                              timeout         => $patch_task_timeout,
+                              reboot          => $reboot,
+                              security_only   => $security_only,
+                              clean_cache     => $clean_cache,
+                              '_catch_errors' => true)
+
+        $patched = $patch_result.ok_set.names
+        $not_patched = $patch_result.error_set.names
+        $rebooting_result = $patch_result.ok_set.results.filter | $result | { $result.value['was_rebooted'] }
+        $rebooting = $rebooting_result.map | $result | { $result.target.name }
+
+        ### Wait for Reboot ###
+        if $rebooting.empty {
+          $post_patch_ready = $patched
+        } else {
+          $wait_results = run_plan('pe_patch::wait_for_reboot', target_info => $begin_boot_time_target_info, reboot_wait_time => $reboot_wait_time)
+          $reboot_timed_out = $wait_results['pending']
+          $post_patch_ready = $patched - $reboot_timed_out
+        }
+
+        ### Post reboot script, Input: $post_patch_ready, Output: None ###
+        # Run the post_reboot_scriptpath, if defined. Don't fail the plan
+        # if the script fails. The user will be able to see the result in
+        # the console.
+        if $post_reboot_scriptpath and !$post_patch_ready.empty {
+          run_command($post_reboot_scriptpath, $post_patch_ready, '_catch_errors' => true)
+        }
+      }
     }
 
     ### Post patching health check, Input: $post_patch_ready, Output: $post_patch_puppet_run_passed ###
