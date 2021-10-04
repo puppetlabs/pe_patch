@@ -532,7 +532,7 @@ if facts['values']['os']['family'] == 'RedHat'
     # Capture the yum job ID
     log.info 'Getting yum job ID'
     job = ''
-    yum_id, stderr, status = Open3.capture3('yum history')
+    yum_id, stderr, status = Open3.capture3('yum --setopt=history_list_view=users history')
     err(status, 'pe_patch/yum', stderr, starttime) if status != 0
     yum_id.split("\n").each do |line|
       # Quite the regex.  This pulls out fields 1 & 3 from the first info line
