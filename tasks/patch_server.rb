@@ -612,6 +612,15 @@ elsif facts['values']['os']['family'] == 'Debian'
   apt_std_out, stderr, status = Open3.capture3("#{deb_front} apt-get #{dpkg_params} -y #{deb_opts} #{apt_mode}")
   err(status, 'pe_patch/apt', stderr, starttime) if status != 0
 
+  # PE-33166: Since we use apt-get install for security-only runs, this marks 
+  # all the packages as manual. Since these might be things like kernels that 
+  # people want to use apt autoremove with, we mark them as auto here to allow that.
+  if security_only
+    mark_stdout, stderr, status = Open3.capture3("#{deb_front} apt-mark auto #{pkg_list.join(' ')}")
+    err(status, 'pe_patch/apt', stderr, starttime) if status != 0
+    apt_std_out += mark_stdout
+  end
+
   refresh_fact(fact_generation_cmd, starttime, log)
   run_pre_post_patching_script(post_patching_scriptpath, 'post', starttime, log)
   was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
