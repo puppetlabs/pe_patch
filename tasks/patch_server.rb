@@ -581,7 +581,14 @@ if facts['values']['os']['family'] == 'RedHat'
     log.debug "Getting updated package list for job #{job}"
     updated_packages, stderr, status = Open3.capture3("yum history info #{job}")
     err(status, 'pe_patch/yum', stderr, starttime) if status != 0
-    updated_packages.split("\n").each do |line|
+    # Older versions of yum add "Transaction performed with" to the output, with 
+    # installed package lines. We want to skip those so they are not included
+    # in the list of packages we just updated. If we can't find it, err on 
+    # the side of caution and don't filter the lines at all.
+    lines = updated_packages.split("\n")
+    index = lines.index { |l| l =~ /Packages Altered/ } || 0
+    lines = lines.drop(index)
+    lines.each do |line|
       matchdata = line.match(/^\s+(Installed|Install|Upgraded|Erased|Updated)\s+(\S+)\s/)
       next unless matchdata
       pkg_hash[matchdata[2]] = matchdata[1]
