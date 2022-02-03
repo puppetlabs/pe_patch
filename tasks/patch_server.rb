@@ -232,7 +232,10 @@ def err(code, kind, message, starttime)
 end
 
 # Figure out if we need to reboot
-def reboot_required(family, release, reboot)
+def reboot_required(facts, reboot)
+  family = facts['values']['os']['family']
+  release = facts['values']['os']['release']['major']
+  osname = facts['values']['os']['name']
   # Do the easy stuff first
   if ['always', 'patched'].include?(reboot)
     true
@@ -240,7 +243,7 @@ def reboot_required(family, release, reboot)
     false
   elsif family == 'RedHat' && File.file?('/usr/bin/needs-restarting') && reboot == 'smart'
     response = ''
-    if release.to_i > 6
+    if release.to_i > 6 || osname =~ /Amazon/
       _output, _stderr, status = Open3.capture3('/usr/bin/needs-restarting -r')
       response = if status != 0
                    true
@@ -276,7 +279,7 @@ end
 
 def do_reboot_if_needed(reboot, facts, shutdown_cmd, log = nil)
   # Reboot if the task has been told to and there is a requirement OR if reboot_override is set to true
-  needs_reboot = reboot_required(facts['values']['os']['family'], facts['values']['os']['release']['major'], reboot)
+  needs_reboot = reboot_required(facts, reboot)
   log.info "reboot_required returning #{needs_reboot}" if log
   if needs_reboot == true
     log.info 'Rebooting' if log
@@ -528,7 +531,7 @@ if facts['values']['os']['family'] == 'RedHat'
   status, output = run_with_timeout("yum #{yum_params} #{securityflag} upgrade -y", timeout, 2)
   err(status, 'pe_patch/yum', "yum upgrade returned non-zero (#{status}) : #{output}", starttime) if status != 0
 
-  if facts['values']['os']['release']['major'].to_i > 5
+  if facts['values']['os']['release']['major'].to_i > 5 || facts['values']['os']['name'] =~ /Amazon/
     # Capture the yum job ID
     log.info 'Getting yum job ID'
     job = ''
