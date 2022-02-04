@@ -30,7 +30,7 @@ case $(facter osfamily) in
     PKGS=$(echo $PKGS | sed 's/Obsoleting.*//')
     SECPKGS=$(yum -q --security check-update 2>/dev/null | egrep -v "^Security:|is broken|^Loaded plugins|^You should report|^To help pinpoint" | awk '/^[[:alnum:]]/ {print $1}')
     SECPKGS=$(echo $SECPKGS | sed 's/Obsoleting.*//')
-    HELDPKGS=$([ -r /etc/yum/pluginconf.d/versionlock.list ] && awk -F':' '/:/ {print $2}' /etc/yum/pluginconf.d/versionlock.list | sed 's/-[0-9].*//')
+    HELDPKGS=$([ -r /etc/yum/pluginconf.d/versionlock.list ] && sed 's/^#.*//' /etc/yum/pluginconf.d/versionlock.list | awk -F':' '/:/ {if ($1 ~ /^[0-9]/) {print $2} else {print $1}}' | sed 's/-[0-9].*//')
   ;;
   Suse)
     PKGS=$(zypper --non-interactive --no-abbrev --quiet lu | grep '|' | grep -v '\sRepository' | awk -F'|' '/^[[:alnum:]]/ {print $3}' | sed 's/^\s*\|\s*$//')
@@ -109,16 +109,6 @@ done
 if [ -f '/usr/bin/needs-restarting' ]
 then
   case $(facter os.release.major) in
-    7)
-      /usr/bin/needs-restarting -r 2>/dev/null 1>/dev/null
-      if [ $? -gt 0 ]
-      then
-        echo "true" > $DATADIR/reboot_required
-      else
-        echo "false" > $DATADIR/reboot_required
-      fi
-      /usr/bin/needs-restarting 2>/dev/null | sed 's/[[:space:]]*$//' >$DATADIR/apps_to_restart
-    ;;
     6)
       /usr/bin/needs-restarting 2>/dev/null 1>$DATADIR/apps_to_restart
       if [ $? -gt 0 ]
@@ -133,6 +123,16 @@ then
           echo "false" > $DATADIR/reboot_required
         fi
       fi
+    ;;
+    *)
+      /usr/bin/needs-restarting -r 2>/dev/null 1>/dev/null
+      if [ $? -gt 0 ]
+      then
+        echo "true" > $DATADIR/reboot_required
+      else
+        echo "false" > $DATADIR/reboot_required
+      fi
+      /usr/bin/needs-restarting 2>/dev/null | sed 's/[[:space:]]*$//' >$DATADIR/apps_to_restart
     ;;
   esac
 else
