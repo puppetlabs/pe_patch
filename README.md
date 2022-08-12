@@ -1,6 +1,6 @@
 # pe_patch
 
-This repo is a fork of albatrossflavour/puppet_os_patching.
+This repo is a fork of albatrossflavour/puppet_os_patching. Note that many of the links and some docs may refer to os_patching and may not reflect the latest features of pe_patch.
 
 This module contains a set of tasks and custom facts to allow the automation of and reporting on operating system patching. Currently patching works on Linux (Redhat, Suse and Debian derivatives) and Windows (Server 2008 through to 2019 have been tested).
 
