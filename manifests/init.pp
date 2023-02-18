@@ -462,7 +462,7 @@ class pe_patch (
         scheduled_task { 'pe_patch fact generation':
           ensure    => $ensure,
           enabled   => true,
-          command   => "${::system32}/WindowsPowerShell/v1.0/powershell.exe",
+          command   => "${facts['os']['windows']['system32']}/WindowsPowerShell/v1.0/powershell.exe",
           arguments => "-NonInteractive -ExecutionPolicy RemoteSigned -File ${fact_cmd}",
           user      => 'SYSTEM',
           trigger   => [
