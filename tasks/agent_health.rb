@@ -42,7 +42,7 @@ end
 
 puppet_cmd = puppet_bin
 
-output, stderr, status = Open3.capture3(puppet_cmd, 'config', 'print', '--render-as', 'json')
+output, stderr, status = Open3.capture3(puppet_cmd, 'config', 'print', '--section', 'agent', '--render-as', 'json')
 if status != 0
   puts stderr
   exit 1
@@ -193,16 +193,16 @@ end
 if compilers[0]
   compilers.each do |compiler|
     begin
-      TCPSocket.new(compiler, pm_port)
+      TCPSocket.new(compiler.split(':')[0], pm_port)
     rescue
-      details['issues']['port ' + compiler] = 'Port ' + pm_port.to_s + ' on ' + compiler + ' not reachable'
+      details['issues']['port ' + compiler.split(':')[0]] = 'Port ' + pm_port.to_s + ' on ' + compiler.split(':')[0] + ' not reachable'
     end
   end
 else
   begin
-    TCPSocket.new(puppetserver, pm_port)
+    TCPSocket.new(puppetserver.split(':'[0], pm_port)
   rescue
-    details['issues']['port'] = 'Port ' + pm_port.to_s + ' on ' + puppetserver + ' not reachable'
+    details['issues']['port'] = 'Port ' + pm_port.to_s + ' on ' + puppetserver.split(':')[0] + ' not reachable'
   end
 end
 
