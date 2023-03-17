@@ -200,7 +200,7 @@ if compilers[0]
   end
 else
   begin
-    TCPSocket.new(puppetserver.split(':'[0], pm_port)
+    TCPSocket.new(puppetserver.split(':')[0], pm_port)
   rescue
     details['issues']['port'] = 'Port ' + pm_port.to_s + ' on ' + puppetserver.split(':')[0] + ' not reachable'
   end
