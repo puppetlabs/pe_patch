@@ -380,13 +380,13 @@ class pe_patch (
     case $::kernel {
       'Linux': {
 
-        if ( $::osfamily == 'RedHat' and $manage_yum_utils) {
+        if ( $facts['os']['family'] == 'RedHat' and $manage_yum_utils) {
           package { 'yum-utils':
             ensure => $yum_utils,
           }
         }
 
-        if ( $::osfamily == 'RedHat' and $manage_delta_rpm) {
+        if ( $facts['os']['family'] == 'RedHat' and $manage_delta_rpm) {
           if (Integer($facts['os']['release']['major']) < 8 or $facts['os']['name'] == 'Fedora') {
             package { 'deltarpm':
               ensure => $delta_rpm,
@@ -399,7 +399,7 @@ class pe_patch (
           }
         }
 
-        if ( $::osfamily == 'RedHat' and $manage_yum_plugin_security) {
+        if ( $facts['os']['family'] == 'RedHat' and $manage_yum_plugin_security) {
           package { 'yum-plugin-security':
             ensure => $yum_plugin_security,
           }
