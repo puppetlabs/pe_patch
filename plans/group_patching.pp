@@ -68,7 +68,7 @@ plan pe_patch::group_patching (
     } else {
       # So we can detect when a node has rebooted
       $begin_boot_time_results = without_default_logging() || {
-        run_task('pe_patch::last_boot_time', $patch_ready)
+        run_task('pe_patch::last_boot_time', $patch_ready, '_catch_errors' => true)
       }
 
       $begin_boot_time_target_info = Hash($begin_boot_time_results.results.map |$item| {
