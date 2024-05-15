@@ -249,7 +249,7 @@ class pe_patch (
         file { $fact_cmd:
           ensure  => $ensure_file,
           mode    => $fact_mode,
-          content => epp("${module_name}/${fact_file}.epp", {'environment' => $environment}),
+          content => epp("${module_name}/${fact_file}.epp", {}),
           notify  => Exec[$fact_exec],
         }
       }
@@ -257,7 +257,7 @@ class pe_patch (
         file { $fact_cmd:
           ensure  => $ensure_file,
           mode    => $fact_mode,
-          content => epp("${module_name}/${fact_file}.epp", {'windows_puppet_installpath' => $windows_puppet_install_path, 'windows_update_criteria' => $windows_update_criteria, 'environment' => $environment}),
+          content => epp("${module_name}/${fact_file}.epp", {'windows_puppet_installpath' => $windows_puppet_install_path, 'windows_update_criteria' => $windows_update_criteria}),
           notify  => Exec[$fact_exec],
         }
 
