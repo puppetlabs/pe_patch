@@ -26,25 +26,19 @@ case $(facter osfamily) in
     # ---
     # We need to filter those out as they screw up the package listing, in addition
     # to other messages.
-    PKGS=$(yum -q check-update 2>/dev/null | egrep -v "^Security:|is broken|^Loaded plugins|^You should report|^To help pinpoint" | awk '/^[[:alnum:]]/ {print $1}')
-    PKGS=$(echo $PKGS | sed 's/Obsoleting.*//')
-    SECPKGS=$(yum -q --security check-update 2>/dev/null | egrep -v "^Security:|is broken|^Loaded plugins|^You should report|^To help pinpoint" | awk '/^[[:alnum:]]/ {print $1}')
-    SECPKGS=$(echo $SECPKGS | sed 's/Obsoleting.*//')
+    PKGS=$(yum -q check-update 2>/dev/null | egrep -v "^Security:|is broken|^Loaded plugins|^You should report|^To help pinpoint|^Obsoleting" | awk '/^[[:alnum:]]/ {print $1,$2}')
+    SECPKGS=$(yum -q --security check-update 2>/dev/null | egrep -v "^Security:|is broken|^Loaded plugins|^You should report|^To help pinpoint|^Obsoleting" | awk '/^[[:alnum:]]/ {print $1,$2}')
     HELDPKGS=$([ -r /etc/yum/pluginconf.d/versionlock.list ] && sed 's/^#.*//' /etc/yum/pluginconf.d/versionlock.list | awk -F':' '/:/ {if ($1 ~ /^[0-9]/) {print $2} else {print $1}}' | sed 's/-[0-9].*//')
-    VPKGS=$(yum -q check-update 2>/dev/null | egrep -v "^Security:|is broken|^Loaded plugins|^You should report|^To help pinpoint" | awk '/^[[:alnum:]]/ {print $1,$2}')
-    VPKGS=$(echo "$VPKGS" | sed 's/Obsoleting.*//')
   ;;
   Suse)
-    PKGS=$(zypper --non-interactive --no-abbrev --quiet lu | grep '|' | grep -v '\sRepository' | awk -F'|' '/^[[:alnum:]]/ {print $3}' | sed 's/^\s*\|\s*$//')
+    PKGS=$(zypper --non-interactive --no-abbrev --quiet lu | grep '|' | grep -v '\sRepository' | awk -F'|' '/^[[:alnum:]]/ {print $3,$5}' | sed 's/^\s*\|\s*$//')
     SECPKGS=$(zypper --non-interactive --no-abbrev --quiet lp -g security | grep '|' | grep -v '^Repository' | awk -F'|' '/^[[:alnum:]]/ {print $2}' | sed 's/^\s*\|\s*$//')
     HELDPKGS=$(zypper --non-interactive --no-abbrev --quiet ll | grep '|' | grep -v '^Repository' | awk -F'|' '/^[[:alnum:]]/ {print $2}' | sed 's/^\s*\|\s*$//')
-    VPKGS=$(zypper --non-interactive --no-abbrev --quiet lu | grep '|' | grep -v '\sRepository' | awk -F'|' '/^[[:alnum:]]/ {print $3,$5}' | sed 's/^\s*\|\s*$//')
   ;;
   Debian)
-    PKGS=$(apt upgrade -s 2>/dev/null | awk '$1 == "Inst" {print $2}')
-    SECPKGS=$(apt upgrade -s 2>/dev/null | awk '$1 == "Inst" && /[Ss]ecurity/ {print $2}')
+    PKGS=$(apt list --upgradable 2>/dev/null | grep -v 'Listing...' | awk -F '[/ ]' '{print $1,$3}')
+    SECPKGS=$(apt list --upgradable 2>/dev/null | grep -v 'Listing...' | grep -i 'security' | awk -F '[/ ]' '{print $1,$3}')
     HELDPKGS=$(dpkg --get-selections | awk '$2 == "hold" {print $1}')
-    VPKGS=$(apt list --upgradable 2>/dev/null | grep -v 'Listing...' | awk -F '[/ ]' '{print $1,$3}')
   ;;
   *)
     rm $LOCKFILE
@@ -84,10 +78,10 @@ else
   touch "${UPDATEFILE}.previous"
 fi
 cat /dev/null > ${UPDATEFILE}
-for UPDATE in $PKGS
+while read -r UPDATE
 do
-  echo "$UPDATE" >> ${UPDATEFILE}
-done
+  echo "$UPDATE" | awk '{print $1}' >> ${UPDATEFILE}
+done <<< "$PKGS"
 
 if [ -f "${VERUPDATEFILE}" ]
 then
@@ -98,30 +92,20 @@ fi
 cat /dev/null > ${VERUPDATEFILE}
 while read -r UPDATE
 do
-  PKGNAME=$(echo "$UPDATE" | awk '{print $1}')
-  # if echo "$PKGNAME" | grep -qE "\.([\w]+(86|64)|noarch)$"
-  # then
-  #   PKGNAME=${PKGNAME%.*}
-  # fi
-
-  PKGVER=$(echo "$UPDATE" | awk '{print $2}')
-  # if echo "$VER" | grep -qE "^[0-9]+:"
-  # then
-  #   # Remove the epoch from the PKGVER string
-  #   PKGVER=$(echo "$PKGVER" | cut -d ':' -f 2-)
-  # fi
-
-  if [ -n "$PKGNAME" ]
-  then
-    echo "$PKGNAME,$PKGVER" >> ${VERUPDATEFILE}
-  fi
-done <<< "$VPKGS"
+  echo "$UPDATE" | awk -v OFS=',' '{print $1,$2}' >> ${VERUPDATEFILE}
+done <<< "$PKGS"
 
 cat /dev/null > ${SECUPDATEFILE}
-for UPDATE in $SECPKGS
+while read -r UPDATE
 do
-  echo "$UPDATE" >> ${SECUPDATEFILE}
-done
+  echo "$UPDATE" | awk '{print $1}' >> ${UPDATEFILE}
+done <<< "$SECPKGS"
+
+cat /dev/null > ${VERSECUPDATEFILE}
+while read -r UPDATE
+do
+  echo "$UPDATE" | awk -v OFS=',' '{print $1,$2}' >> ${VERSECUPDATEFILE}
+done <<< "$SECPKGS"
 
 cat /dev/null > ${OSHELDPKGFILE}
 for HELD in $HELDPKGS

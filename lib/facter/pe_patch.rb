@@ -46,6 +46,30 @@ else
       data
     end
 
+    chunk(:updates_with_version) do
+      data = {}
+      updateset = {}
+      updatefile = pe_patch_dir + '/package_updates_with_version'
+      if File.file?(updatefile)
+        if (Time.now - File.mtime(updatefile)) / (24 * 3600) > 10
+          warnings['update_file_time'] = 'Update version file has not been updated in 10 days'
+        end
+
+        updates = File.open(updatefile, 'r').read
+        updates.each_line do |line|
+          next unless line =~ /[A-Za-z0-9]+/
+          next if line =~ /^#|^$/
+          line.sub! 'Title : ', ''
+          pkg = line.split(' , ')
+          updateset[pkg[0]] = pkg[1]
+        end
+      else
+        warnings['update_file_with_version'] = 'Update version file not found, update information invalid'
+      end
+      data['package_updates_with_version'] = updateset
+      data
+    end
+
     chunk(:kb_updates) do
       data = {}
       kblist = []
@@ -93,6 +117,28 @@ else
       end
       data['security_package_updates'] = secupdatelist
       data['security_package_update_count'] = secupdatelist.count
+      data
+    end
+
+    chunk(:secupdates) do
+      data = {}
+      secupdatehash = {}
+      secupdatefile = pe_patch_dir + '/security_package_updates_with_version'
+      if File.file?(secupdatefile)
+        if (Time.now - File.mtime(secupdatefile)) / (24 * 3600) > 10
+          warnings['sec_update_file_time'] = 'Security update version file has not been updated in 10 days'
+        end
+        secupdates = File.open(secupdatefile, 'r').read
+        secupdates.each_line do |line|
+          next if line.empty?
+          next if line =~ /^#|^$/
+          pkg = line.split(' , ')
+          secupdatehash[pkg[0]] = pkg[1]
+        end
+      else
+        warnings['security_update_file'] = 'Security update version file not found, update information invalid'
+      end
+      data['security_package_updates_with_version'] = secupdatehash
       data
     end
 
