@@ -81,19 +81,19 @@ else
 fi
 cat /dev/null > ${UPDATEFILE}
 cat /dev/null > ${UPDATEWITHVERFILE}
-while read -r PKG
+for UPDATE in `echo "$PKGS"`
 do
-  echo "$PKG" | awk '{print $1}' >> ${UPDATEFILE}
-  echo "$PKG" | awk -v OFS=',' '{print $1,$2}' >> ${UPDATEWITHVERFILE}
-done <<< "$PKGS"
+  echo "$UPDATE" | awk '{print $1}' >> ${UPDATEFILE}
+  echo "$UPDATE" | awk -v OFS=',' '{print $1,$2}' >> ${UPDATEWITHVERFILE}
+done
 
 cat /dev/null > ${SECUPDATEFILE}
 cat /dev/null > ${SECUPDATEWITHVERFILE}
-while read -r SECPKG
+for UPDATE in `echo "$SECPKGS"`
 do
-  echo "$SECPKG" | awk '{print $1}' >> ${SECUPDATEFILE}
-  echo "$SECPKG" | awk -v OFS=',' '{print $1,$2}' >> ${SECUPDATEWITHVERFILE}
-done <<< "$SECPKGS"
+  echo "$UPDATE" | awk '{print $1}' >> ${SECUPDATEFILE}
+  echo "$UPDATE" | awk -v OFS=',' '{print $1,$2}' >> ${SECUPDATEWITHVERFILE}
+done
 
 cat /dev/null > ${OSHELDPKGFILE}
 for HELD in $HELDPKGS
