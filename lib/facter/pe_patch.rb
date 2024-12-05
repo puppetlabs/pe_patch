@@ -48,7 +48,7 @@ else
 
     chunk(:updates_with_version) do
       data = {}
-      updateset = {}
+      updatehash = {}
       updatefile = pe_patch_dir + '/package_updates_with_version'
       if File.file?(updatefile)
         if (Time.now - File.mtime(updatefile)) / (24 * 3600) > 10
@@ -60,13 +60,14 @@ else
           next unless line =~ /[A-Za-z0-9]+/
           next if line =~ /^#|^$/
           line.sub! 'Title : ', ''
-          pkg = line.split(' , ')
-          updateset[pkg[0]] = pkg[1]
+          pkg = line.split(',')
+          next if pkg[0].empty?
+          updatehash[pkg[0].chomp] = pkg[1].chomp
         end
       else
         warnings['update_file_with_version'] = 'Update version file not found, update information invalid'
       end
-      data['package_updates_with_version'] = updateset
+      data['package_updates_with_version'] = updatehash
       data
     end
 
@@ -120,7 +121,7 @@ else
       data
     end
 
-    chunk(:secupdates) do
+    chunk(:secupdates_with_version) do
       data = {}
       secupdatehash = {}
       secupdatefile = pe_patch_dir + '/security_package_updates_with_version'
@@ -132,11 +133,12 @@ else
         secupdates.each_line do |line|
           next if line.empty?
           next if line =~ /^#|^$/
-          pkg = line.split(' , ')
-          secupdatehash[pkg[0]] = pkg[1]
+          pkg = line.split(',')
+          next if pkg[0].empty?
+          secupdatehash[pkg[0].chomp] = pkg[1].chomp
         end
       else
-        warnings['security_update_file'] = 'Security update version file not found, update information invalid'
+        warnings['security_update_file_with_version'] = 'Security update version file not found, update information invalid'
       end
       data['security_package_updates_with_version'] = secupdatehash
       data

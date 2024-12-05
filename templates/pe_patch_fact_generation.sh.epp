@@ -26,8 +26,10 @@ case $(facter osfamily) in
     # ---
     # We need to filter those out as they screw up the package listing, in addition
     # to other messages.
-    PKGS=$(yum -q check-update 2>/dev/null | egrep -v "^Security:|is broken|^Loaded plugins|^You should report|^To help pinpoint|^Obsoleting" | awk '/^[[:alnum:]]/ {print $1,$2}')
-    SECPKGS=$(yum -q --security check-update 2>/dev/null | egrep -v "^Security:|is broken|^Loaded plugins|^You should report|^To help pinpoint|^Obsoleting" | awk '/^[[:alnum:]]/ {print $1,$2}')
+    PKGS=$(yum -q check-update 2>/dev/null | egrep -v "^Security:|is broken|^Loaded plugins|^You should report|^To help pinpoint" | awk '/^[[:alnum:]]/ {print $1,$2}')
+    PKGS=$(echo "$PKGS" | sed 's/Obsoleting.*//')
+    SECPKGS=$(yum -q --security check-update 2>/dev/null | egrep -v "^Security:|is broken|^Loaded plugins|^You should report|^To help pinpoint" | awk '/^[[:alnum:]]/ {print $1,$2}')
+    SECPKGS=$(echo "$SECPKGS" | sed 's/Obsoleting.*//')
     HELDPKGS=$([ -r /etc/yum/pluginconf.d/versionlock.list ] && sed 's/^#.*//' /etc/yum/pluginconf.d/versionlock.list | awk -F':' '/:/ {if ($1 ~ /^[0-9]/) {print $2} else {print $1}}' | sed 's/-[0-9].*//')
   ;;
   Suse)
@@ -48,9 +50,9 @@ esac
 
 DATADIR='/opt/puppetlabs/pe_patch'
 UPDATEFILE="$DATADIR/package_updates"
-VERUPDATEFILE="$DATADIR/package_updates_with_version"
+UPDATEWITHVERFILE="$DATADIR/package_updates_with_version"
 SECUPDATEFILE="$DATADIR/security_package_updates"
-VERSECUPDATEFILE="$DATADIR/security_package_updates_with_version"
+SECUPDATEWITHVERFILE="$DATADIR/security_package_updates_with_version"
 OSHELDPKGFILE="$DATADIR/os_version_locked_packages"
 CATHELDPKGFILE="$DATADIR/catalog_version_locked_packages"
 MISMATCHHELDPKGFILE="$DATADIR/mismatched_version_locked_packages"
@@ -78,33 +80,19 @@ else
   touch "${UPDATEFILE}.previous"
 fi
 cat /dev/null > ${UPDATEFILE}
-while read -r UPDATE
+cat /dev/null > ${UPDATEWITHVERFILE}
+while read -r PKG
 do
-  echo "$UPDATE" | awk '{print $1}' >> ${UPDATEFILE}
-done <<< "$PKGS"
-
-if [ -f "${VERUPDATEFILE}" ]
-then
-  mv -f "${VERUPDATEFILE}" "${VERUPDATEFILE}.previous"
-else
-  touch "${VERUPDATEFILE}.previous"
-fi
-cat /dev/null > ${VERUPDATEFILE}
-while read -r UPDATE
-do
-  echo "$UPDATE" | awk -v OFS=',' '{print $1,$2}' >> ${VERUPDATEFILE}
+  echo "$PKG" | awk '{print $1}' >> ${UPDATEFILE}
+  echo "$PKG" | awk -v OFS=',' '{print $1,$2}' >> ${UPDATEWITHVERFILE}
 done <<< "$PKGS"
 
 cat /dev/null > ${SECUPDATEFILE}
-while read -r UPDATE
+cat /dev/null > ${SECUPDATEWITHVERFILE}
+while read -r SECPKG
 do
-  echo "$UPDATE" | awk '{print $1}' >> ${UPDATEFILE}
-done <<< "$SECPKGS"
-
-cat /dev/null > ${VERSECUPDATEFILE}
-while read -r UPDATE
-do
-  echo "$UPDATE" | awk -v OFS=',' '{print $1,$2}' >> ${VERSECUPDATEFILE}
+  echo "$SECPKG" | awk '{print $1}' >> ${SECUPDATEFILE}
+  echo "$SECPKG" | awk -v OFS=',' '{print $1,$2}' >> ${SECUPDATEWITHVERFILE}
 done <<< "$SECPKGS"
 
 cat /dev/null > ${OSHELDPKGFILE}
