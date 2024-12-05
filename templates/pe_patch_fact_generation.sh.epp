@@ -50,9 +50,7 @@ esac
 
 DATADIR='/opt/puppetlabs/pe_patch'
 UPDATEFILE="$DATADIR/package_updates"
-UPDATEWITHVERFILE="$DATADIR/package_updates_with_version"
 SECUPDATEFILE="$DATADIR/security_package_updates"
-SECUPDATEWITHVERFILE="$DATADIR/security_package_updates_with_version"
 OSHELDPKGFILE="$DATADIR/os_version_locked_packages"
 CATHELDPKGFILE="$DATADIR/catalog_version_locked_packages"
 MISMATCHHELDPKGFILE="$DATADIR/mismatched_version_locked_packages"
@@ -80,19 +78,15 @@ else
   touch "${UPDATEFILE}.previous"
 fi
 cat /dev/null > ${UPDATEFILE}
-cat /dev/null > ${UPDATEWITHVERFILE}
-for UPDATE in `echo "$PKGS"`
+echo "$PKGS" | while read UPDATE
 do
-  echo "$UPDATE" | awk '{print $1}' >> ${UPDATEFILE}
-  echo "$UPDATE" | awk -v OFS=',' '{print $1,$2}' >> ${UPDATEWITHVERFILE}
+  echo "$UPDATE" >> ${UPDATEFILE}
 done
 
 cat /dev/null > ${SECUPDATEFILE}
-cat /dev/null > ${SECUPDATEWITHVERFILE}
-for UPDATE in `echo "$SECPKGS"`
+echo "$SECPKGS" | while read UPDATE
 do
-  echo "$UPDATE" | awk '{print $1}' >> ${SECUPDATEFILE}
-  echo "$UPDATE" | awk -v OFS=',' '{print $1,$2}' >> ${SECUPDATEWITHVERFILE}
+  echo "$UPDATE" >> ${SECUPDATEFILE}
 done
 
 cat /dev/null > ${OSHELDPKGFILE}
