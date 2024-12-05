@@ -37,9 +37,9 @@ else
           next unless line =~ /[A-Za-z0-9]+/
           next if line =~ /^#|^$/
           line.sub! 'Title : ', ''
-          update = line.strip.split(/ /, 2)
-          pkgname = update[0]
-          pkgver = update[1]
+          pkg = line.strip.split(/ /, 2)
+          pkgname = pkg[0]
+          pkgver = pkg[1]
           updatelist.push pkgname
           pkgverhash[pkgname] = pkgver
         end
@@ -93,9 +93,9 @@ else
         secupdates.each_line do |line|
           next unless line =~ /[A-Za-z0-9]+/
           next if line =~ /^#|^$/
-          update = line.strip.split(/ /, 2)
-          pkgname = update[0]
-          pkgver = update[1]
+          pkg = line.strip.split(/ /, 2)
+          pkgname = pkg[0]
+          pkgver = pkg[1]
           secupdatelist.push pkgname
           pkgverhash[pkgname] = pkgver
         end
