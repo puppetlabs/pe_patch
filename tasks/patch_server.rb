@@ -580,7 +580,7 @@ end
 
 # Run the patching
 if facts['values']['os']['family'] == 'RedHat'
-  if !securityFlag.empty? || package_list_param.empty?
+  if !securityflag.empty? || package_list_param.empty?
     log.info 'Running yum upgrade'
     log.debug "Timeout value set to : #{timeout}"
     yum_end = ''
