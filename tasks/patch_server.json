@@ -28,6 +28,10 @@
     "clean_cache": {
       "description": "Should the yum/dpkg caches be cleaned at the start of the task? (Defaults to false)",
       "type": "Optional[Boolean]"
+    },
+    "package_list": {
+      "description": "List of packages to update or Windows updates to install (Defaults to all available updates, ignored if security_only=true)",
+      "type": "Optional[Array[String]]"
     }
   },
   "implementations": [

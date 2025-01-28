@@ -36,7 +36,10 @@ Switch, when set the script will only install updates with a category that inclu
 Criteria used for update detection. This ultimately drives which updates will be installed. The default for this script is determined by pe_patch::windows_update_criteria, and is "IsInstalled=0 and IsHidden=0 and Type='Software'" unless otherwise specified, which should be suitable in most cases, and relies on your upstream update approvals. Note that this is not validated, if the syntax is not validated the script will fail. See MSDN docs for valid syntax - https://docs.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iupdatesearcher-search
 
 .PARAMETER MaxUpdates
-Install only the first X numbmer of updates (at most). Useful ror testing.
+Install only the first X numbmer of updates (at most). Useful for testing.
+
+.PARAMETER KB
+Comma separated list of KB(s) to install. Useful for installing a specific update, or a small number of updates. Ignored if SecurityOnly=true.
 #>
 
 
@@ -100,6 +103,12 @@ param(
     [Parameter(ParameterSetName = "InstallUpdates-ForceSchedTask")]
     [Parameter(ParameterSetName = "InstallUpdates")]
     [Int32]$MaxUpdates,
+
+    # only install updates related to this KB
+    [Parameter(ParameterSetName = "InstallUpdates-Forcelocal")]
+    [Parameter(ParameterSetName = "InstallUpdates-ForceSchedTask")]
+    [Parameter(ParameterSetName = "InstallUpdates")]
+    [String]$KB,
 
     # path to lock file
     [String]$LockFile = "$($env:programdata)\PuppetLabs\pe_patch\pe_patch_groups.lock",
@@ -626,7 +635,15 @@ $scriptBlock = {
             $updatesToInstall = Get-SecurityUpdates -Updates $allUpdates
         }
         else {
-            $updatesToInstall = $allUpdates
+            if ($Params.KB) {
+                Add-LogEntry "Installing all updates relating to $($Params.KB)"
+                $kbs = $Params.KB -split ","
+                $updatesToInstall = $allUpdates | Where-Object { $kbs -contains $_.KBArticleIDs }
+            }
+            else {
+                Add-LogEntry "Installing all updates"
+                $updatesToInstall = $allUpdates
+            }
         }
 
         # filter to maxupdates if required
@@ -856,6 +873,7 @@ try {
         DebugPreference   = $DebugPreference
         VerbosePreference = $VerbosePreference
         LogFile           = $LogFile
+        KB                = $KB
     }
 
     # see if WU API is available (e.g. running in a local session)

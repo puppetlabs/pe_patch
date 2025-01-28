@@ -59,7 +59,7 @@ Run a basic patching task from the command line:
 pe_patch::patch_server - Carry out OS patching on the server, optionally including a reboot and/or only applying security related updates
 
 USAGE:
-$ puppet task run pe_patch::patch_server [dpkg_params=<value>] [reboot=<value>] [security_only=<value>] [timeout=<value>] [yum_params=<value>] <[--nodes, -n <node-names>] | [--query, -q <'query'>]>
+$ puppet task run pe_patch::patch_server [dpkg_params=<value>] [reboot=<value>] [security_only=<value>] [timeout=<value>] [yum_params=<value>] [package_list=[<value>]] <[--nodes, -n <node-names>] | [--query, -q <'query'>]>
 
 PARAMETERS:
 - dpkg_params : Optional[String]
@@ -72,9 +72,11 @@ PARAMETERS:
     How many seconds should we wait until timing out the patch run? (Defaults to 3600 seconds)
 - yum_params : Optional[String]
     Any additional parameters to include in the yum upgrade command (such as including/excluding repos)
+- package_list : Optional[Array[String]]
+    List of packages to update or Windows updates to install (Defaults to all available updates, ignored if security_only=true)
 ```
 
-Example:
+#### Example:
 ```bash
 $ puppet task run pe_patch::patch_server --params='{"reboot": "patched", "security_only": false}' --query="inventory[certname] { facts.pe_patch.patch_group = 'Week3' and facts.pe_patch.blocked = false and facts.pe_patch.package_update_count > 0}"
 ```
@@ -85,7 +87,21 @@ This will run a patching task against all nodes which have facts matching:
 * `pe_patch.blocked` equals `false`
 * `pe_patch.package_update_count` greater than 0
 
-The task will apply all patches (`security_only=false`) and will reboot the node after patching (`reboot=true`).
+The task will apply all patches (`security_only=false` & `package_list` not set) and will reboot the node after patching (`reboot=true`).
+
+#### Example:
+```bash
+$ puppet task run pe_patch::patch_server --params='{"package_list": ["foo", "foo-libs"]}' --query="inventory[certname] { facts.os.family != 'windows' and facts.pe_patch.patch_group = 'VR' and facts.pe_patch.package_update_count > 0 }"
+```
+
+This will run a patching task against all nodes which have facts matching:
+
+* `os.family` is not 'windows'
+* `pe_patch.patch_group` is 'VR'
+* `pe_patch.package_update_count` greater than 0
+
+The task will apply patches for `foo` & `foo-libs` packages and will fail with an error on any nodes where either package has no update available.
+If the query was altered to include Windows nodes this task would fail with an error because package_list contains non-numerical values. To install a Windows update reference the KB article ID, for example: {"package_list": ["1234567"]}
 
 ## Reference
 
@@ -359,3 +375,4 @@ Fork, develop, submit a pull request
 - [Geoff Williams](https://github.com/GeoffWilliams)
 - [Jake Rogers](https://github.com/JakeTRogers)
 - [Nathan Giuliani](https://github.com/nathangiuliani)
+- [Clive Weir](https://github.com/cliveweir)

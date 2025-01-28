@@ -418,6 +418,56 @@ end
 
 log.info "Reboot after patching set to #{reboot}"
 
+# Is there a package_list parameter?
+package_list_param = []
+if params['package_list']
+
+  # Must be an array
+  if !params['package_list'].is_a?(Array)
+    err('106', 'pe_patch/params', 'Invalid parameter for package_list', starttime)
+  end
+
+  # Check for unsafe content
+  if params['package_list'].any? { |pkg| pkg =~ %r{[\$\|\/;`&]} }
+    err('107', 'pe_patch/package_list', 'Unsafe content in package_list', starttime)
+  end
+
+  # Install will fail if we try to update a package (or install a KB) that has no update available.
+  # To fail early/gracefully check each package/KB in package_list against the available updates
+  #   - For Windows, KB article IDs must be numbers and must exist in missing_update_kbs.
+  #   - For Linux, all packages must exist in package_updates. Note that on RedHat package_updates
+  #     entries include architecture (e.g. 'foo-libs.x86_64') so factor this into the check.
+  if facts['values']['os']['family'] == 'windows'
+    missing_update_kbs = facts['values']['pe_patch']['missing_update_kbs']
+    params['package_list'].each do |kb_article_id|
+      if kb_article_id.to_i == 0
+        err('107', 'pe_patch/package_list', 'KB ID is not a number: ' + kb_article_id, starttime)
+      end
+      if !missing_update_kbs.include?("KB#{kb_article_id}")
+        err('107', 'pe_patch/package_list', 'No missing KB with ID: ' + kb_article_id, starttime)
+      end
+    end
+  elsif facts['values']['os']['family'] == 'RedHat'
+    package_updates = facts['values']['pe_patch']['package_updates']
+    params['package_list'].each do |pkg|
+      if !package_updates.any? { |update| update.start_with?("#{pkg}.") }
+        err('107', 'pe_patch/package_list', 'No update available for package: ' + pkg, starttime)
+      end
+    end
+  else
+    package_updates = facts['values']['pe_patch']['package_updates']
+    params['package_list'].each do |pkg|
+      if !package_updates.include?(pkg)
+        err('107', 'pe_patch/package_list', 'No update available for package: ' + pkg, starttime)
+      end
+    end
+  end
+
+  # Checks passed, set the package list parameter for use later
+  package_list_param = params['package_list']
+end
+log.info "Package list set to #{package_list_param}"
+
 # Should we only apply security patches?
 security_only = ''
 if params['security_only']
@@ -468,6 +518,7 @@ zypper_params = if params['zypper_params']
 if zypper_params =~ %r{[\$\|\/;`&]}
   err('110', 'pe_patch/zypper_params', 'Unsafe content in zypper_params', starttime)
 end
+
 # Set the timeout for the patch run
 if params['timeout']
   if params['timeout'] > 0
@@ -496,7 +547,11 @@ if security_only == true
   updatecount = facts['values']['pe_patch']['security_package_update_count']
   securityflag = '--security'
 else
-  updatecount = facts['values']['pe_patch']['package_update_count']
+  if package_list_param.empty?
+    updatecount = facts['values']['pe_patch']['package_update_count']
+  else
+    updatecount = package_list_param.length
+  end
   securityflag = ''
 end
 
@@ -525,11 +580,19 @@ end
 
 # Run the patching
 if facts['values']['os']['family'] == 'RedHat'
-  log.info 'Running yum upgrade'
-  log.debug "Timeout value set to : #{timeout}"
-  yum_end = ''
-  status, output = run_with_timeout("yum #{yum_params} #{securityflag} upgrade -y", timeout, 2)
-  err(status, 'pe_patch/yum', "yum upgrade returned non-zero (#{status}) : #{output}", starttime) if status != 0
+  if !securityFlag.empty? || package_list_param.empty?
+    log.info 'Running yum upgrade'
+    log.debug "Timeout value set to : #{timeout}"
+    yum_end = ''
+    status, output = run_with_timeout("yum #{yum_params} #{securityflag} upgrade -y", timeout, 2)
+    err(status, 'pe_patch/yum', "yum upgrade returned non-zero (#{status}) : #{output}", starttime) if status != 0
+  else
+    log.info 'Running yum update ' + package_list_param.join(' ')
+    log.debug "Timeout value set to : #{timeout}"
+    yum_end = ''
+    status, output = run_with_timeout("yum #{yum_params} update -y #{package_list_param.join(' ')}", timeout, 2)
+    err(status, 'pe_patch/yum', "yum update returned non-zero (#{status}) : #{output}", starttime) if status != 0
+  end
 
   if facts['values']['os']['release']['major'].to_i > 5 || facts['values']['os']['name'] =~ /Amazon/
     # Capture the yum job ID
@@ -611,8 +674,14 @@ elsif facts['values']['os']['family'] == 'Debian'
     pkg_list = facts['values']['pe_patch']['security_package_updates']
     apt_mode = 'install ' + pkg_list.join(' ')
   else
-    pkg_list = facts['values']['pe_patch']['package_updates']
-    apt_mode = 'dist-upgrade'
+    # Are we doing a package list or a full upgrade?
+    if package_list_param.empty?
+      pkg_list = facts['values']['pe_patch']['package_updates']
+      apt_mode = 'dist-upgrade'
+    else
+      pkg_list = package_list_param
+      apt_mode = 'install ' + pkg_list.join(' ')
+    end
   end
 
   # Do the patching
@@ -646,9 +715,16 @@ elsif facts['values']['os']['family'] == 'windows'
                    ''
                  end
 
+  # Does kb_id variable exist?
+  kb_arg = if !package_list_param.empty?
+             '-KB "' + package_list_param.join(',') + '"'
+           else
+             ''
+           end
+
   # build patching command
   powershell_cmd = "#{ENV['systemroot']}/system32/WindowsPowerShell/v1.0/powershell.exe -NonInteractive -ExecutionPolicy RemoteSigned -File"
-  win_patching_cmd = "#{powershell_cmd} #{patch_script} #{security_arg} -Timeout #{timeout}"
+  win_patching_cmd = "#{powershell_cmd} #{patch_script} #{security_arg} #{kb_arg} -Timeout #{timeout}"
 
   log.info 'Running patching powershell script'
 
@@ -727,12 +803,18 @@ elsif facts['values']['os']['family'] == 'Suse'
     log.info 'Running zypper patch'
     status, output = run_with_timeout("zypper #{zypper_required_params} #{zypper_params} patch -g security #{zypper_cmd_params}", timeout, 2)
     err(status, 'pe_patch/zypper', "zypper patch returned non-zero (#{status}) : #{output}", starttime) if status != 0
-  else
+  elsif package_list_param.empty?
     pkg_list = facts['values']['pe_patch']['package_updates']
     log.info 'Running zypper update'
     status, output = run_with_timeout("zypper #{zypper_required_params} #{zypper_params} update -t package #{zypper_cmd_params}", timeout, 2)
     err(status, 'pe_patch/zypper', "zypper update returned non-zero (#{status}) : #{output}", starttime) if status != 0
+  else
+    pkg_list = package_list_param
+    log.info 'Running zypper update ' + pkg_list.join(' ') 
+    status, output = run_with_timeout("zypper #{zypper_required_params} #{zypper_params} update -t package #{zypper_cmd_params} #{pkg_list.join(' ')}", timeout, 2)
+    err(status, 'pe_patch/zypper', "zypper patch returned non-zero (#{status}) : #{output}", starttime) if status != 0
   end
+    
   refresh_fact(fact_generation_cmd, starttime, log)
   run_pre_post_patching_script(post_patching_scriptpath, 'post', starttime, log)
   was_rebooted = do_reboot_if_needed(reboot, facts, shutdown_cmd, log)
