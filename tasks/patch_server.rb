@@ -418,9 +418,24 @@ end
 
 log.info "Reboot after patching set to #{reboot}"
 
-# Is there a package_list parameter?
+# Should we only apply security patches?
+security_only = ''
+if params['security_only']
+  if params['security_only'] == true
+    security_only = true
+  elsif params['security_only'] == false
+    security_only = false
+  else
+    err('109', 'pe_patch/params', 'Invalid boolean to security_only parameter', starttime)
+  end
+else
+  security_only = false
+end
+log.info "Apply only security patches set to #{security_only}"
+
+# Is there a package_list parameter? If security_only=true then package_list is ignored
 package_list_param = []
-if params['package_list']
+if params['package_list'] && security_only == false
 
   # Must be an array
   if !params['package_list'].is_a?(Array)
@@ -433,9 +448,9 @@ if params['package_list']
   end
 
   # Install will fail if we try to update a package (or install a KB) that has no update available.
-  # To fail early/gracefully check each package/KB in package_list against the available updates
-  #   - For Windows, KB article IDs must be numbers and must exist in missing_update_kbs.
-  #   - For Linux, all packages must exist in package_updates. Note that on RedHat package_updates
+  # Fail early/gracefully by checking each package/KB in package_list against the available updates.
+  #   - For Windows, each KB article ID must be a number and must exist in missing_update_kbs.
+  #   - For Linux, each package must exist in package_updates. Note that on RedHat package_updates
   #     entries include architecture (e.g. 'foo-libs.x86_64') so factor this into the check.
   if facts['values']['os']['family'] == 'windows'
     missing_update_kbs = facts['values']['pe_patch']['missing_update_kbs']
@@ -467,21 +482,6 @@ if params['package_list']
   package_list_param = params['package_list']
 end
 log.info "Package list set to #{package_list_param}"
-
-# Should we only apply security patches?
-security_only = ''
-if params['security_only']
-  if params['security_only'] == true
-    security_only = true
-  elsif params['security_only'] == false
-    security_only = false
-  else
-    err('109', 'pe_patch/params', 'Invalid boolean to security_only parameter', starttime)
-  end
-else
-  security_only = false
-end
-log.info "Apply only security patches set to #{security_only}"
 
 # Have we had any yum parameter specified?
 yum_params = if params['yum_params']
