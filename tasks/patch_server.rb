@@ -452,25 +452,25 @@ if params['package_list'] && security_only == false
   #   - For Windows, each KB article ID must be a number and must exist in missing_update_kbs.
   #   - For Linux, each package must exist in package_updates. Note that on RedHat package_updates
   #     entries include architecture (e.g. 'foo-libs.x86_64') so factor this into the check.
-  if facts['values']['os']['family'] == 'windows'
-    missing_update_kbs = facts['values']['pe_patch']['missing_update_kbs']
+  if facts.dig('values', 'os', 'family') == 'windows'
+    missing_update_kbs = facts.dig ('values', 'pe_patch', 'missing_update_kbs')
     params['package_list'].each do |kb_article_id|
-      if kb_article_id.to_i == 0
+      if kb_article_id.to_i.to_s != kb_article_id
         err('107', 'pe_patch/package_list', 'KB ID is not a number: ' + kb_article_id, starttime)
       end
       if !missing_update_kbs.include?("KB#{kb_article_id}")
         err('107', 'pe_patch/package_list', 'No missing KB with ID: ' + kb_article_id, starttime)
       end
     end
-  elsif facts['values']['os']['family'] == 'RedHat'
-    package_updates = facts['values']['pe_patch']['package_updates']
+  elsif facts.dig('values', 'os', 'family') == 'RedHat'
+    package_updates = facts.dig('values', 'pe_patch', 'package_updates')
     params['package_list'].each do |pkg|
       if !package_updates.any? { |update| update.start_with?("#{pkg}.") }
         err('107', 'pe_patch/package_list', 'No update available for package: ' + pkg, starttime)
       end
     end
   else
-    package_updates = facts['values']['pe_patch']['package_updates']
+    package_updates = facts.dig('values', 'pe_patch', 'package_updates')
     params['package_list'].each do |pkg|
       if !package_updates.include?(pkg)
         err('107', 'pe_patch/package_list', 'No update available for package: ' + pkg, starttime)
@@ -548,7 +548,7 @@ if security_only == true
   securityflag = '--security'
 else
   if package_list_param.empty?
-    updatecount = facts['values']['pe_patch']['package_update_count']
+    updatecount = facts.dig('values', 'pe_patch', 'package_update_count')
   else
     updatecount = package_list_param.length
   end
