@@ -548,7 +548,7 @@ if security_only == true
   securityflag = '--security'
 else
   if package_list_param.empty?
-    updatecount = facts.dig('values', 'pe_patch', 'package_update_count')
+    updatecount = facts['values']['pe_patch']['package_update_count']
   else
     updatecount = package_list_param.length
   end
