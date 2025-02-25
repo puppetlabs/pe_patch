@@ -336,7 +336,8 @@ function Invoke-RefreshPuppetFacts {
     if ($diff) {
         Add-LogEntry "Uploading puppet facts"
         $puppetCmd = Join-Path "<%= $windows_puppet_installpath %>" -ChildPath "\bin\puppet.bat"
-        & $puppetCmd facts upload --environment="<%= $environment %>" --color=false
+        $puppetEnv = & $puppetCmd config print environment --section agent
+        & $puppetCmd facts upload --environment $puppetEnv --color=false
     }
 }
 
