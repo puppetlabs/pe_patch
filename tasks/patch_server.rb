@@ -453,7 +453,7 @@ if params['package_list'] && security_only == false
   #   - For Linux, each package must exist in package_updates. Note that on RedHat package_updates
   #     entries include architecture (e.g. 'foo-libs.x86_64') so factor this into the check.
   if facts.dig('values', 'os', 'family') == 'windows'
-    missing_update_kbs = facts.dig ('values', 'pe_patch', 'missing_update_kbs')
+    missing_update_kbs = facts.dig('values', 'pe_patch', 'missing_update_kbs')
     params['package_list'].each do |kb_article_id|
       if kb_article_id.to_i.to_s != kb_article_id
         err('107', 'pe_patch/package_list', 'KB ID is not a number: ' + kb_article_id, starttime)
