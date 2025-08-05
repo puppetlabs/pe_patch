@@ -183,7 +183,7 @@ class pe_patch (
       $windows_puppet_install_path = 'C:\Program Files\Puppet Labs\Puppet'
     }
 
-    case $::kernel {
+    case $facts['kernel'] {
       'Linux': {
         $fact_upload_cmd     = '/opt/puppetlabs/bin/puppet facts upload'
         $cache_dir           = '/opt/puppetlabs/pe_patch'
@@ -247,7 +247,7 @@ class pe_patch (
       force  => true,
     }
 
-    case $::kernel {
+    case $facts['kernel'] {
       'Linux': {
         file { $fact_cmd:
           ensure  => $ensure_file,
@@ -380,7 +380,7 @@ class pe_patch (
       }
     }
 
-    case $::kernel {
+    case $facts['kernel'] {
       'Linux': {
 
         if ( $facts['os']['family'] == 'RedHat' and $manage_yum_utils) {
