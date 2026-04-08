@@ -563,7 +563,14 @@ post_patching_scriptpath = facts['values']['pe_patch']['post_patching_scriptpath
 run_pre_post_patching_script(pre_patching_scriptpath, 'pre', starttime, log)
 
 # There are no updates available, exit cleanly rebooting if the override flag is set
-if updatecount.zero?
+# NOTE: If yum_params or zypper_params are set, the cached update count may not reflect
+# updates available in repos that those params enable (e.g. --enablerepo=...).
+# In that case we must NOT exit early and should let the package manager run with the
+# supplied params so it can discover and apply updates from those repos.
+skip_count_check = (!yum_params.empty? && facts['values']['os']['family'] == 'RedHat') ||
+                   (!zypper_params.empty? && facts['values']['os']['family'] == 'Suse')
+
+if updatecount.zero? && !skip_count_check
   if reboot == 'always'
     log.error 'Rebooting'
     log.info 'No patches to apply, rebooting as requested'
@@ -576,6 +583,8 @@ if updatecount.zero?
     log.info 'No patches to apply, exiting'
   end
   exit(0)
+elsif updatecount.zero? && skip_count_check
+  log.info "Update count is zero but #{facts['values']['os']['family'] == 'RedHat' ? 'yum_params' : 'zypper_params'} is set - skipping early exit to allow package manager to run with supplied parameters"
 end
 
 # Run the patching
