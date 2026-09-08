@@ -5,7 +5,7 @@
 # the various things that class lays down (cron job, cache dir, etc.).
 # This removes those artifacts so only pe_patch artifacts remain.
 class pe_patch::cleanup_os_patching {
-  case $::kernel {
+  case $facts['kernel'] {
     'Linux': {
       $cache_dir           = '/var/cache/os_patching'
       $fact_dir            = '/usr/local/bin'
@@ -31,7 +31,7 @@ class pe_patch::cleanup_os_patching {
     force  => true,
   }
 
-  case $::kernel {
+  case $facts['kernel'] {
     'Linux': {
       cron { 'Cache patching data':
         ensure  => absent,
